@@ -1,6 +1,6 @@
-# PRISM — Production-Grade Feature Playbook
+# PRISM — One-Week Proof-Quality Feature Playbook
 
-> **Goal:** build the strongest credible prototype for TetraTHON’s EdTech brief—not a thin demo, not a generic chatbot, and not a false claim of proprietary competitor technology.
+> **Goal:** build the strongest credible one-week prototype for TetraTHON’s EdTech brief—not a thin demo, not a generic chatbot, and not a false claim of proprietary competitor technology.
 >
 > **Product thesis:** PRISM is an adaptive, offline-resilient STEM learning system that turns every learner interaction into explainable evidence, identifies the likely prerequisite gap behind an error or doubt, gives curriculum-grounded remediation, and tells the teacher exactly whom to help and how.
 
@@ -34,7 +34,7 @@ In one 3-minute flow, a judge can see:
 
 ---
 
-# 1. Product architecture
+# 1. One-week prototype architecture
 
 ## 1.1 Architecture at a glance
 
@@ -53,8 +53,8 @@ In one 3-minute flow, a judge can see:
 └───────┬──────────────────┬─────────────────┬─────────────────────┘
         │                  │                 │
 ┌───────▼──────┐   ┌───────▼────────┐  ┌────▼──────────────────┐
-│ PostgreSQL   │   │ Vector index    │  │ Optional LLM gateway  │
-│ events/state │   │ curriculum only│  │ policy + validation   │
+│ SQLite       │   │ Curated lesson │  │ Optional LLM adapter  │
+│ events/state │   │ card registry  │  │ policy + validation   │
 └──────────────┘   └────────────────┘  └───────────────────────┘
 ```
 
@@ -773,7 +773,7 @@ No AI feature is “done” because it sounds fluent.
 
 ---
 
-# 11. Build order: strongest path, not shortcut path
+# 11. One-week build order: strongest path, not shortcut path
 
 ## Phase 1 — Foundation
 
@@ -825,7 +825,7 @@ No AI feature is “done” because it sounds fluent.
 
 ---
 
-# 12. Product evolution: from verified curriculum slice to trusted learning system
+# 12. Post-prototype roadmap — explicitly not part of week one
 
 ## Stage 1 — Evidence-backed launch slice
 
@@ -847,7 +847,7 @@ Expand retrieval only across approved, versioned curriculum sources. Maintain mo
 
 Run consented pilots with pre-registered success metrics: learning gain, retention, misconception recovery, accessibility outcomes, teacher workload, and differential performance across learner groups. Add observability, incident response, backups, access review, retention/deletion controls, and a staged rollout mechanism.
 
-# 13. Definition of “best possible” for PRISM
+# 13. Definition of “best possible” for the one-week PRISM prototype
 
 PRISM earns trust if it demonstrates all of the following simultaneously:
 

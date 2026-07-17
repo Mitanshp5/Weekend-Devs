@@ -8,7 +8,7 @@
 
 This protects real learning from API outages, makes the learner model explainable, and addresses the problem statement's requirement to identify the underlying conceptual gap rather than merely generate fluent answers.
 
-## Production target architecture
+## One-week prototype architecture
 
 ```text
 PWA client (offline cache + local event queue)
@@ -24,7 +24,7 @@ Application API
   ├── Explanation policy gateway (optional LLM)
   └── Dashboard read-model aggregator
 
-PostgreSQL event store and read models; IndexedDB for offline learner operation.
+SQLite event store and derived read models; IndexedDB for offline learner operation.
 ```
 
 ## Core entities
