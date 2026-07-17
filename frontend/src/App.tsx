@@ -1,71 +1,26 @@
-import { useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import "./App.css";
-
-const diagnosticSignals = [
-  "Find your current starting point",
-  "Get a learning path built around your evidence",
-  "See exactly what to practise next",
-];
+import { DashboardShell } from "./components/DashboardShell";
+import { DiagnosticPage } from "./pages/DiagnosticPage";
+import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { StartPage } from "./pages/StartPage";
 
 export default function App() {
-  const [hasStartedDiagnostic, setHasStartedDiagnostic] = useState(false);
-
-  if (hasStartedDiagnostic) {
-    return (
-      <main className="app-shell">
-        <section className="hero diagnostic-step" aria-labelledby="diagnostic-title">
-          <p className="eyebrow">PRISM · diagnostic</p>
-          <p className="question-count">Question 1 of 5</p>
-          <h1 id="diagnostic-title">Let&apos;s find your starting point.</h1>
-          <p className="hero-copy">
-            Your first subject-specific question will appear here once the learning domain is chosen.
-            PRISM will keep the evidence behind every recommendation visible.
-          </p>
-          <div className="diagnostic-card">
-            <div>
-              <p className="card-label">Waiting for curriculum selection</p>
-              <h2>Diagnostic question placeholder</h2>
-              <p>No answer is recorded until a verified curriculum item is available.</p>
-            </div>
-            <button type="button" disabled>
-              Continue
-            </button>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
   return (
-    <main className="app-shell">
-      <section className="hero" aria-labelledby="page-title">
-        <p className="eyebrow">PRISM · adaptive learning</p>
-        <h1 id="page-title">Ready to learn your way?</h1>
-        <p className="hero-copy">
-          Start with a short diagnostic. PRISM uses your responses to build an explainable
-          learning path—not a one-size-fits-all lesson.
-        </p>
-        <div className="diagnostic-card">
-          <div>
-            <p className="card-label">Your first step</p>
-            <h2>5-question diagnostic</h2>
-            <p>About 3 minutes · Your responses stay visible and explainable.</p>
-          </div>
-          <button type="button" onClick={() => setHasStartedDiagnostic(true)}>
-            Begin diagnostic
-          </button>
-        </div>
-      </section>
-
-      <section className="signals" aria-label="How PRISM personalizes learning">
-        {diagnosticSignals.map((signal, index) => (
-          <article key={signal} className="signal-card">
-            <span aria-hidden="true">0{index + 1}</span>
-            <p>{signal}</p>
-          </article>
-        ))}
-      </section>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<StartPage />} />
+        <Route path="/diagnostic" element={<DiagnosticPage />} />
+        <Route element={<DashboardShell />}>
+          <Route path="/learn" element={<PlaceholderPage eyebrow="Learner home" title="Your learning space" description="Your recommended path, next lesson, and recent evidence will live here." />} />
+          <Route path="/lesson/:lessonId" element={<PlaceholderPage eyebrow="Lesson" title="Focused learning block" description="The active micro-lesson and embedded practice will live here." />} />
+          <Route path="/tutor" element={<PlaceholderPage eyebrow="Doubt tutor" title="Ask for a hint, not just an answer" description="Grounded help, guided hints, and authored fallbacks will live here." />} />
+          <Route path="/progress" element={<PlaceholderPage eyebrow="Mastery" title="See your evidence" description="Concept mastery, prerequisite gaps, and learning history will live here." />} />
+          <Route path="/teacher" element={<PlaceholderPage eyebrow="Teacher dashboard" title="Intervention-ready insights" description="Learner clusters, misconceptions, and suggested interventions will live here." />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

@@ -34,11 +34,25 @@ h1 { max-width: 740px; margin: 0; font-size: clamp(3rem, 8vw, 6.8rem); line-heig
 .diagnostic-card { display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding: 1.45rem 1.5rem; border: 1px solid rgb(222 238 228 / 26%); border-radius: 1.1rem; background: rgb(11 35 27 / 44%); backdrop-filter: blur(12px); }
 h2 { margin: 0; font-size: 1.2rem; }
 .diagnostic-card p:not(.card-label) { margin: .5rem 0 0; color: #abc2b6; font-size: .88rem; }
-.diagnostic-card button { flex: none; border: 0; border-radius: .7rem; padding: .85rem 1.15rem; color: #153328; background: #d8ecbe; font-weight: 800; cursor: pointer; transition: transform .16s ease, background .16s ease; }
-.diagnostic-card button:hover { transform: translateY(-2px); background: #f0facd; }
-.diagnostic-card button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.diagnostic-card button, .primary-action { flex: none; border: 0; border-radius: .7rem; padding: .85rem 1.15rem; color: #153328; background: #d8ecbe; font-weight: 800; cursor: pointer; text-decoration: none; transition: transform .16s ease, background .16s ease; }
+.diagnostic-card button:hover, .primary-action:hover { transform: translateY(-2px); background: #f0facd; }
+.diagnostic-card button:focus-visible, .primary-action:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .signals { display: grid; grid-template-columns: repeat(3, 1fr); gap: .85rem; max-width: 840px; margin: 4rem auto 0; }
 .signal-card { min-height: 120px; padding: 1rem; border-top: 1px solid rgb(222 238 228 / 28%); color: #dbeade; }
 .signal-card span { color: #d8ecbe; font: .75rem "DM Mono", monospace; }
 .signal-card p { max-width: 180px; margin: 1rem 0 0; line-height: 1.45; }
-@media (max-width: 640px) { .hero { margin-top: 3vh; } .diagnostic-card { align-items: flex-start; flex-direction: column; } .signals { grid-template-columns: 1fr; margin-top: 2.5rem; } .signal-card { min-height: auto; } }
+
+.dashboard-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); height: 100dvh; overflow: hidden; background: #eef4ee; color: #13271f; }
+.dashboard-nav { display: flex; flex-direction: column; gap: 2.5rem; padding: 1.5rem; overflow: hidden; background: #12352a; color: #e8f1eb; }
+.brand { color: #d8ecbe; font-weight: 800; letter-spacing: .08em; text-decoration: none; }
+.dashboard-nav nav { display: grid; gap: .45rem; }
+.nav-link { border-radius: .55rem; padding: .7rem .8rem; color: #b7d1c3; text-decoration: none; }
+.nav-link:hover, .nav-link.active { color: #153328; background: #d8ecbe; }
+.nav-footer { margin-top: auto; color: #87a99b; font: .7rem "DM Mono", monospace; }
+.dashboard-main { min-width: 0; overflow-y: auto; padding: clamp(1.5rem, 5vw, 4rem); }
+.dashboard-page { max-width: 980px; }
+.dashboard-page h1 { color: #153328; }
+.page-copy { max-width: 620px; color: #557066; line-height: 1.7; }
+.placeholder-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 3rem; }
+.placeholder-grid article { min-height: 150px; padding: 1.25rem; border-radius: .9rem; background: #fff; box-shadow: 0 10px 35px rgb(21 51 40 / 8%); }
+@media (max-width: 640px) { .hero { margin-top: 3vh; } .diagnostic-card { align-items: flex-start; flex-direction: column; } .signals { grid-template-columns: 1fr; margin-top: 2.5rem; } .signal-card { min-height: auto; } .dashboard-shell { grid-template-columns: 72px minmax(0, 1fr); } .dashboard-nav { padding: 1rem .65rem; gap: 2rem; } .dashboard-nav .brand { font-size: 0; } .dashboard-nav .brand::first-letter { font-size: 1rem; } .nav-link { overflow: hidden; padding: .7rem .25rem; font-size: .66rem; text-align: center; } .placeholder-grid { grid-template-columns: 1fr; } }
