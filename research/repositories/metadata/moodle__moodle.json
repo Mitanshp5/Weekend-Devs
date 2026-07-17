@@ -1,0 +1,22 @@
+{
+  "full_name": "moodle/moodle",
+  "html_url": "https://github.com/moodle/moodle",
+  "description": "Moodle - the world's open source learning platform",
+  "stargazers_count": 7251,
+  "forks_count": 7552,
+  "open_issues_count": 1,
+  "language": "PHP",
+  "license": {
+    "key": "gpl-3.0",
+    "name": "GNU General Public License v3.0",
+    "spdx_id": "GPL-3.0",
+    "url": "https://api.github.com/licenses/gpl-3.0",
+    "node_id": "MDc6TGljZW5zZTk="
+  },
+  "default_branch": "main",
+  "created_at": "2009-12-16T23:01:23Z",
+  "updated_at": "2026-07-15T08:52:02Z",
+  "pushed_at": "2026-07-14T17:46:07Z",
+  "topics": [],
+  "size": 952972
+}

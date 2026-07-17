@@ -1,0 +1,42 @@
+{
+  "full_name": "oppia/oppia",
+  "html_url": "https://github.com/oppia/oppia",
+  "description": "A free, online learning platform to make quality education accessible for all.",
+  "stargazers_count": 6738,
+  "forks_count": 5612,
+  "open_issues_count": 1798,
+  "language": "Python",
+  "license": {
+    "key": "apache-2.0",
+    "name": "Apache License 2.0",
+    "spdx_id": "Apache-2.0",
+    "url": "https://api.github.com/licenses/apache-2.0",
+    "node_id": "MDc6TGljZW5zZTI="
+  },
+  "default_branch": "develop",
+  "created_at": "2015-08-14T00:16:14Z",
+  "updated_at": "2026-07-17T00:11:19Z",
+  "pushed_at": "2026-07-17T00:11:15Z",
+  "topics": [
+    "angular",
+    "appengine",
+    "appengine-python",
+    "education",
+    "hacktoberfest",
+    "interactive",
+    "javascript",
+    "learning",
+    "nonprofit",
+    "python",
+    "sdg",
+    "sdg-4",
+    "sdg4",
+    "sdgs",
+    "teaching",
+    "tutor",
+    "tutorials",
+    "typescript",
+    "web"
+  ],
+  "size": 420214
+}

@@ -1,0 +1,29 @@
+{
+  "full_name": "learningequality/kolibri",
+  "html_url": "https://github.com/learningequality/kolibri",
+  "description": "Kolibri Learning Platform: the offline app for universal education",
+  "stargazers_count": 1084,
+  "forks_count": 952,
+  "open_issues_count": 498,
+  "language": "Python",
+  "license": {
+    "key": "mit",
+    "name": "MIT License",
+    "spdx_id": "MIT",
+    "url": "https://api.github.com/licenses/mit",
+    "node_id": "MDc6TGljZW5zZTEz"
+  },
+  "default_branch": "develop",
+  "created_at": "2016-01-19T19:22:07Z",
+  "updated_at": "2026-07-16T17:51:32Z",
+  "pushed_at": "2026-07-16T17:50:32Z",
+  "topics": [
+    "edtech",
+    "education",
+    "hacktoberfest",
+    "oer",
+    "offline-first",
+    "sdg-4"
+  ],
+  "size": 163750
+}

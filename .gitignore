@@ -1,0 +1,10 @@
+repos/
+graphify-out/
+.env
+.env.*
+!*.example
+node_modules/
+.venv/
+__pycache__/
+dist/
+build/
