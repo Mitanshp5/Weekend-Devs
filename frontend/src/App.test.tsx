@@ -22,6 +22,6 @@ describe("App", () => {
     await user.click(screen.getByRole("link", { name: "Begin diagnostic" }));
 
     expect(screen.getByText("Question 1 of 5")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Continue" })).toBeVisible();
   });
 });
