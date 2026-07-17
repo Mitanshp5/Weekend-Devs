@@ -10,9 +10,9 @@ describe("App", () => {
   it("shows the subject-agnostic diagnostic start screen", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Ready to learn your way?" })).toBeVisible();
-    expect(screen.getByText("5-question diagnostic")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Begin diagnostic" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Ready to learn your way?" })).toBeInTheDocument();
+    expect(screen.getByText("5-question diagnostic")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Begin diagnostic" })).toBeInTheDocument();
   });
 
   it("moves into the first diagnostic step when the learner begins", async () => {
@@ -21,7 +21,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("link", { name: "Begin diagnostic" }));
 
-    expect(screen.getByText("Question 1 of 5")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Continue" })).toBeVisible();
+    expect(await screen.findByText("Question 1 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
   });
 });

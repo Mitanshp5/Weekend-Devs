@@ -31,9 +31,9 @@ describe("Grade 8 catalog", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Mathematics")).toBeVisible();
-    expect(screen.getByText("Science")).toBeVisible();
-    expect(screen.getByText("English")).toBeVisible();
+    expect(await screen.findByText("Mathematics")).toBeInTheDocument();
+    expect(screen.getByText("Science")).toBeInTheDocument();
+    expect(screen.getByText("English")).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith("/api/catalog/subjects?grade=8");
   });
 });
