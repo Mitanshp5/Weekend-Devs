@@ -61,7 +61,7 @@ The model should **not** receive an unconstrained "solve the homework" instructi
 5. no final answer before an attempt where suitable;
 6. safe fallback when context is insufficient.
 
-The winning hackathon point is a visible, auditable **teaching policy** plus a deterministic concept mapping layer—not an undisclosed giant prompt.
+The strongest product decision is a visible, auditable **teaching policy** plus a deterministic concept-mapping layer—not an undisclosed giant prompt.
 
 ### Important boundary on “system prompts”
 
@@ -81,7 +81,7 @@ Khan Academy discloses its process and several behavioural requirements, but not
 
 ### What this means for PRISM
 
-For a 36-hour build, retain the strong interaction pattern—not a speculative algorithm:
+For the initial production curriculum slice, retain the strong interaction pattern—not a speculative algorithm:
 
 - a compact learner home;
 - "continue from last session";

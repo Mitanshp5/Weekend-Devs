@@ -2,13 +2,13 @@
 
 **Status:** research/design only. This is not implementation code.
 
-## Non-negotiable demo principle
+## Non-negotiable product principle
 
 **The adaptive decision must work with the LLM disabled.**
 
-This protects the 36-hour demo from API outages, makes the learner model explainable, and addresses the problem statement's requirement to identify the underlying conceptual gap rather than merely generate fluent answers.
+This protects real learning from API outages, makes the learner model explainable, and addresses the problem statement's requirement to identify the underlying conceptual gap rather than merely generate fluent answers.
 
-## Smallest credible architecture
+## Production target architecture
 
 ```text
 PWA client (offline cache + local event queue)
@@ -24,7 +24,7 @@ Application API
   ├── Explanation policy gateway (optional LLM)
   └── Dashboard read-model aggregator
 
-SQLite (demo) or Postgres (later)
+PostgreSQL event store and read models; IndexedDB for offline learner operation.
 ```
 
 ## Core entities

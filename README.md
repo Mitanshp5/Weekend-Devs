@@ -1,9 +1,9 @@
 # WeekendDevs
 
-Hackathon workspace: EdTech prescreening research, temporary experiments, and later implementation.
+PRISM workspace: evidence-backed EdTech research, temporary experiments, and a production-quality implementation plan.
 
 ## Status
-- Research phase only. No product/final application code has been added.
+- Research and architecture phase only. No product/final application code has been added.
 
 ## Layout
 - `research/companies/` — public-source platform research

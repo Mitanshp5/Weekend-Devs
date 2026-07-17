@@ -488,7 +488,7 @@ request
   → render response and practice check
 ```
 
-**Important:** for one-topic hackathon scope, curated structured context is superior to pretending a large RAG corpus is needed. Use retrieval only when the corpus is broad enough to justify it.
+**Important:** for an initial verified curriculum slice, curated structured context is superior to pretending a large RAG corpus is needed. As PRISM expands across subjects and grades, introduce retrieval only with source governance, evaluation coverage, and citation validation strong enough to justify it.
 
 ## 6.3 Tutor response schema
 
@@ -793,7 +793,7 @@ No AI feature is “done” because it sounds fluent.
 4. root-gap engine and discriminating-question flow;
 5. teacher dashboard projections.
 
-**Gate:** every stated hackathon requirement works end-to-end without an LLM.
+**Gate:** every core learning outcome works end-to-end without an LLM, including diagnosis, recommendation, remediation, teacher analytics, and offline persistence.
 
 ## Phase 3 — Reliability + offline
 
@@ -825,9 +825,31 @@ No AI feature is “done” because it sounds fluent.
 
 ---
 
-# 12. Definition of “best possible” for this hackathon
+# 12. Product evolution: from verified curriculum slice to trusted learning system
 
-PRISM wins credibility if it demonstrates all of the following simultaneously:
+## Stage 1 — Evidence-backed launch slice
+
+Launch one grade-subject domain only after it has complete concept coverage, reviewed misconception taxonomies, accessible content, deterministic scoring, offline operation, and a teacher pilot protocol. Depth and evidence matter more than adding shallow subjects.
+
+## Stage 2 — Measured learner-model calibration
+
+With explicit consent and privacy review, collect de-identified learning-event sequences. Split data by learner and time to prevent leakage; calibrate BKT parameters and compare against simple baselines. Promote a model only if it improves calibration, learning-path outcomes, and teacher usefulness—not merely offline accuracy.
+
+## Stage 3 — Multi-grade curriculum platform
+
+Introduce curriculum authoring workflows, versioned concept graphs, approval/review, source provenance, localized content, and subject-specific assessment plugins. Every new subject receives its own error taxonomy and evaluation suite; no universal math-centric diagnosis is assumed.
+
+## Stage 4 — Responsible AI tutoring at scale
+
+Expand retrieval only across approved, versioned curriculum sources. Maintain model/prompt versions, evaluation corpora, citation audits, red-team tests, latency/error telemetry, teacher reporting flows, and explicit fallback behavior. A model or prompt change cannot silently alter pedagogy in production.
+
+## Stage 5 — Learning efficacy and operational maturity
+
+Run consented pilots with pre-registered success metrics: learning gain, retention, misconception recovery, accessibility outcomes, teacher workload, and differential performance across learner groups. Add observability, incident response, backups, access review, retention/deletion controls, and a staged rollout mechanism.
+
+# 13. Definition of “best possible” for PRISM
+
+PRISM earns trust if it demonstrates all of the following simultaneously:
 
 - **Adaptive:** different valid learner evidence produces different paths.
 - **Diagnostic:** it identifies a prerequisite hypothesis, not only a wrong answer.

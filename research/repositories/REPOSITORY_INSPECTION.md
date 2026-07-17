@@ -16,7 +16,7 @@ Each conclusion below separates actual inspected code/docs from product inferenc
   - `core/templates/domain/learner_group/learner-group-user-progress.model.ts` represents per-user story and subtopic progress plus an explicit progress-sharing consent flag.
 - **Architectural lesson:** model learning as a stateful journey, not a conversation transcript. Keep a resumable session state alongside per-concept mastery.
 - **PRISM-sized adaptation:** `student_progress` + `concept_mastery` + `attempt_event` + `session_state`. Do not import Oppia's platform architecture.
-- **Limit:** Oppia is a broad authoring/delivery platform and far exceeds a 36-hour scope.
+- **Limit:** Oppia is a broad authoring/delivery platform. PRISM should adopt its proven domain patterns deliberately, rather than fork or embed the platform wholesale.
 
 ## 2. Kolibri — offline-first delivery with granular mastery and attempt logs
 
@@ -29,7 +29,7 @@ Each conclusion below separates actual inspected code/docs from product inferenc
   - Its serialized mastery record includes criterion, timestamps, completion, aggregate correct count, and time spent.
   - Its `diff` action compares current and previous tries and returns per-attempt correctness differences.
 - **Architectural lesson:** completion alone hides the signal teachers need. Capture time, attempt history, correctness, and a mastery criterion; compute comparisons at query time.
-- **PRISM-sized adaptation:** persist event records locally first, derive learner/teacher summaries from them, and maintain an offline synchronization queue. For demo reliability, syncing can be a visible simulated queue rather than cloud infrastructure.
+- **PRISM adaptation:** persist event records locally first, derive learner/teacher summaries from them, and maintain a real offline synchronization queue with idempotent ingestion and reconciliation.
 - **Limit:** Kolibri does not supply PRISM's root-concept-gap tutoring experience by itself; use it as the offline/progress model reference, not as an AI design.
 
 ## 3. Open edX Platform — explicit separation of authoring, delivery, and frontend surfaces
@@ -41,9 +41,9 @@ Each conclusion below separates actual inspected code/docs from product inferenc
   - `README.rst` identifies two central services: CMS/Studio for authoring and LMS for delivery.
   - The same README lists separate authoring, learning, learner-dashboard, profile, and account micro-frontends.
   - The setup requires MySQL, Mongo, Memcached, separate migrations, and multiple frontends.
-- **Architectural lesson:** distinguish content authoring from student learning and teacher analytics—even if the hackathon UX uses a single app.
-- **PRISM-sized adaptation:** keep JSON curriculum/concept content separate from learner event data and dashboard-derived aggregates. One deployable app is sufficient; retain the logical boundaries.
-- **Limit:** production Open edX complexity is explicitly high and unfit for the hackathon demo.
+- **Architectural lesson:** distinguish content authoring from student learning and teacher analytics, even when early deployment uses a modular monolith.
+- **PRISM adaptation:** keep curriculum/concept content separate from learner event data and dashboard-derived aggregates. Start with a modular monolith, retain explicit service boundaries, and extract independently scaling services only when real operational evidence justifies it.
+- **Limit:** production Open edX complexity is high; use it as a reference architecture, not a dependency to embed wholesale.
 
 ## Comparative architecture matrix
 
@@ -59,7 +59,7 @@ Each conclusion below separates actual inspected code/docs from product inferenc
 2. **Persist resumable state.** A low-bandwidth learner must return to the same micro-lesson/doubt context.
 3. **Separate authored concept data from learner state.** This permits transparent citations and deterministic concept-gap rules.
 4. **Treat teacher analytics as a read model.** Aggregate error patterns by concept rather than querying raw chat text manually.
-5. **Avoid platform-scale scope.** The repo evidence strongly shows that production LMS complexity is not a 36-hour prototype feature.
+5. **Earn platform scale.** The repo evidence shows that mature LMS complexity must be introduced through validated boundaries, observability, and real usage evidence—not copied prematurely.
 
 ## Local inspection inventory
 
@@ -84,7 +84,7 @@ Each conclusion below separates actual inspected code/docs from product inferenc
 - **Repository:** https://github.com/pykt-team/pykt-toolkit — ★416 at inspection.
 - **Observed evidence:** the data loader consumes question IDs, concept IDs, response sequences, and masks; models predict next-concept performance and evaluate AUC/accuracy.
 - **PRISM lesson:** preserve `question_id`, `concept_id(s)`, correctness, timestamp, and attempt number now so a transparent heuristic can later be replaced by calibrated knowledge tracing.
-- **Limit:** a research toolkit requiring historical data, training, evaluation, and calibration—not a 36-hour serving dependency.
+- **Limit:** a research toolkit requiring historical data, training, evaluation, and calibration—not a drop-in production serving dependency.
 
 ### 6. Chatbot UI — tutor-streaming and failure-state UX
 
@@ -100,7 +100,7 @@ Each conclusion below separates actual inspected code/docs from product inferenc
 - **PRISM lesson:** persist answers, assessments, concept updates, and tutor decisions; do not treat every streamed token/tool trace as learner evidence.
 - **Limit:** a very large broad agent platform—not a tutoring implementation base.
 
-## Final 36-hour synthesis
+## Production implementation synthesis
 
 1. Use an **Oppia-like bounded skill state** and deterministic answer classification.
 2. Persist **Open edX-like learner × learning-object state** and derive dashboard summaries.
@@ -109,4 +109,4 @@ Each conclusion below separates actual inspected code/docs from product inferenc
 5. Keep the event schema **pyKT-compatible** without pretending a deep knowledge-tracing model is trained.
 6. Apply the small UX lessons from Chatbot UI/LobeChat: streaming is interruptible; errors are normalized; only durable decisions enter mastery records.
 
-No large LMS, AI-chat platform, or research framework should be embedded or deployed wholesale for the hackathon.
+No large LMS, AI-chat platform, or research framework should be embedded or deployed wholesale. PRISM should own its curriculum model, learner-event spine, diagnosis policy, and quality evidence.
