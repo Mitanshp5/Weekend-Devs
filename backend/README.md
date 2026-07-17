@@ -25,5 +25,7 @@ python3 -m venv .venv
 
 - `GET /api/health`
 - `GET /api/catalog/subjects?grade=8`
+- `GET /api/catalog/subjects/{subject_slug}/units?grade=8`
+- `GET /api/catalog/units/{unit_slug}/concepts`
 
 The catalog is seeded idempotently into PostgreSQL on first access. Grade 8 Mathematics, Science, and English are database records; frontend code fetches them through the API rather than carrying curriculum data.
