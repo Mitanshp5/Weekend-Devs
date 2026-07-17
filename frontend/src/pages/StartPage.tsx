@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 
 import { PageTransition } from "../components/PageTransition";
+import { PrismSignature } from "../components/PrismSignature";
 
 const signals = ["Find your current starting point", "Get an explainable learning path", "See exactly what to practise next"];
 
@@ -22,8 +23,13 @@ export function StartPage() {
   return (
     <PageTransition className="app-shell">
       <section className="hero" aria-labelledby="page-title">
-        <p className="eyebrow">PRISM · adaptive learning</p>
-        <h1 id="page-title">Ready to learn your way?</h1>
+        <div className="hero-heading">
+          <div>
+            <p className="eyebrow">PRISM · adaptive learning</p>
+            <h1 id="page-title">Ready to learn your way?</h1>
+          </div>
+          <PrismSignature />
+        </div>
         <p className="hero-copy">Start with a short diagnostic. PRISM builds an explainable learning path from your responses—not a one-size-fits-all lesson.</p>
         <motion.div className="diagnostic-card" {...interaction} transition={{ type: "spring", stiffness: 380, damping: 25 }}>
           <div>

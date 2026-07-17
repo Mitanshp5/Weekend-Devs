@@ -25,6 +25,17 @@ button { font: inherit; }
 }
 
 .hero { max-width: 840px; margin: 0 auto; width: 100%; }
+.hero-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
+.prism-signature { flex: 0 0 9.25rem; width: 9.25rem; height: 9.25rem; margin-top: -.6rem; }
+.prism-signal { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 16px 24px rgb(3 11 25 / 26%)); }
+.prism-facet, .prism-core, .prism-orbit { position: absolute; display: block; }
+.prism-facet { width: 53%; height: 62%; top: 19%; clip-path: polygon(50% 0, 100% 44%, 50% 100%, 0 44%); }
+.prism-facet-left { left: 8%; background: linear-gradient(145deg, #8fe5d2, #4d72dc 72%); }
+.prism-facet-right { right: 8%; background: linear-gradient(215deg, #e5d276, #b65bb1 72%); mix-blend-mode: screen; }
+.prism-core { width: 22%; aspect-ratio: 1; left: 39%; top: 40%; border-radius: 50%; background: #f7f4c9; box-shadow: 0 0 0 7px rgb(230 219 120 / 16%), 0 0 32px #dbe59b; }
+.prism-orbit { width: 83%; aspect-ratio: 1; left: 8.5%; top: 8.5%; border: 1px solid rgb(198 240 225 / 46%); border-radius: 40% 60% 60% 40%; }
+.prism-orbit-one { transform: rotate(30deg); }
+.prism-orbit-two { transform: rotate(-42deg) scale(.72); border-color: rgb(234 206 117 / 55%); }
 .eyebrow, .card-label {
   margin: 0 0 1rem;
   color: #bcd9cc;
@@ -60,4 +71,5 @@ h2 { margin: 0; font-size: 1.2rem; }
 .placeholder-grid article { min-height: 150px; padding: 1.25rem; border-radius: .9rem; background: #fff; box-shadow: 0 10px 35px rgb(21 51 40 / 8%); transition: box-shadow 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer; }
 .placeholder-grid article:hover { box-shadow: 0 15px 45px rgb(21 51 40 / 12%); }
 .subject-link { color: inherit; text-decoration: none; }
-@media (max-width: 640px) { .hero { margin-top: 3vh; } .diagnostic-card { align-items: flex-start; flex-direction: column; } .signals { grid-template-columns: 1fr; margin-top: 2.5rem; } .signal-card { min-height: auto; } .dashboard-shell { grid-template-columns: 72px minmax(0, 1fr); } .dashboard-nav { padding: 1rem .65rem; gap: 2rem; } .dashboard-nav .brand { font-size: 0; } .dashboard-nav .brand::first-letter { font-size: 1rem; } .nav-link { overflow: hidden; padding: .7rem .25rem; font-size: .66rem; text-align: center; } .placeholder-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .hero { margin-top: 3vh; } .hero-heading { gap: .5rem; } .prism-signature { flex-basis: 4.5rem; width: 4.5rem; height: 4.5rem; margin-top: 0; } .diagnostic-card { align-items: flex-start; flex-direction: column; } .signals { grid-template-columns: 1fr; margin-top: 2.5rem; } .signal-card { min-height: auto; } .dashboard-shell { grid-template-columns: 72px minmax(0, 1fr); } .dashboard-nav { padding: 1rem .65rem; gap: 2rem; } .dashboard-nav .brand { font-size: 0; } .dashboard-nav .brand::first-letter { font-size: 1rem; } .nav-link { overflow: hidden; padding: .7rem .25rem; font-size: .66rem; text-align: center; } .placeholder-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
