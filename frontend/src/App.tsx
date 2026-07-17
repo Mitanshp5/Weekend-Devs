@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import "./App.css";
 import { DashboardShell } from "./components/DashboardShell";
+import { CatalogPage } from "./pages/CatalogPage";
 import { DiagnosticPage } from "./pages/DiagnosticPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { StartPage } from "./pages/StartPage";
@@ -13,7 +14,7 @@ export default function App() {
         <Route path="/" element={<StartPage />} />
         <Route path="/diagnostic" element={<DiagnosticPage />} />
         <Route element={<DashboardShell />}>
-          <Route path="/learn" element={<PlaceholderPage eyebrow="Learner home" title="Your learning space" description="Your recommended path, next lesson, and recent evidence will live here." />} />
+          <Route path="/learn" element={<CatalogPage />} />
           <Route path="/lesson/:lessonId" element={<PlaceholderPage eyebrow="Lesson" title="Focused learning block" description="The active micro-lesson and embedded practice will live here." />} />
           <Route path="/tutor" element={<PlaceholderPage eyebrow="Doubt tutor" title="Ask for a hint, not just an answer" description="Grounded help, guided hints, and authored fallbacks will live here." />} />
           <Route path="/progress" element={<PlaceholderPage eyebrow="Mastery" title="See your evidence" description="Concept mastery, prerequisite gaps, and learning history will live here." />} />
