@@ -45,7 +45,9 @@ button { font: inherit; }
 }
 h1 { max-width: 740px; margin: 0; font-size: clamp(2.5rem, 7vmin, 6.8rem); line-height: 0.96; letter-spacing: -0.07em; }
 .hero-copy { max-width: 620px; margin: clamp(1rem, 3vh, 2rem) 0 clamp(1.5rem, 4vh, 2.5rem); color: #c9dbd3; font-size: clamp(1rem, 1.5vw, 1.2rem); line-height: 1.7; }
-.diagnostic-card { display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding: 1.45rem 1.5rem; border: 1px solid rgb(222 238 228 / 26%); border-radius: 1.1rem; background: rgb(11 35 27 / 44%); backdrop-filter: blur(12px); }
+.diagnostic-card { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 2rem; overflow: hidden; padding: 1.45rem 1.5rem; border: 1px solid rgb(222 238 228 / 26%); border-radius: 1.1rem; background: rgb(11 35 27 / 44%); backdrop-filter: blur(12px); }
+.diagnostic-card > :not(.diagnostic-scan) { position: relative; z-index: 1; }
+.diagnostic-scan { position: absolute; z-index: 0; top: -40%; bottom: -40%; width: 17%; transform: skewX(-18deg); background: linear-gradient(90deg, transparent, rgb(154 241 219 / 8%), rgb(237 222 134 / 38%), rgb(154 241 219 / 8%), transparent); filter: blur(1px); pointer-events: none; }
 h2 { margin: 0; font-size: 1.2rem; }
 .diagnostic-card p:not(.card-label) { margin: .5rem 0 0; color: #abc2b6; font-size: .88rem; }
 .diagnostic-card button, .primary-action { flex: none; border: 0; border-radius: .7rem; padding: .85rem 1.15rem; color: #153328; background: #d8ecbe; font-weight: 800; cursor: pointer; text-decoration: none; transition: transform .16s ease, background .16s ease; }
@@ -60,8 +62,10 @@ h2 { margin: 0; font-size: 1.2rem; }
 .dashboard-nav { display: flex; flex-direction: column; gap: 2.5rem; padding: 1.5rem; overflow: hidden; background: #12352a; color: #e8f1eb; }
 .brand { color: #d8ecbe; font-weight: 800; letter-spacing: .08em; text-decoration: none; }
 .dashboard-nav nav { display: grid; gap: .45rem; }
-.nav-link { border-radius: .55rem; padding: .7rem .8rem; color: #b7d1c3; text-decoration: none; }
-.nav-link:hover, .nav-link.active { color: #153328; background: #d8ecbe; }
+.nav-link { position: relative; isolation: isolate; overflow: hidden; border-radius: .55rem; padding: .7rem .8rem; color: #b7d1c3; text-decoration: none; }
+.nav-link-label { position: relative; z-index: 1; }
+.prism-nav-beam { position: absolute; z-index: 0; inset: 1px; border-radius: .48rem; background: linear-gradient(100deg, #d8ecbe 0%, #91dfd2 48%, #dccb75 100%); box-shadow: 0 0 20px rgb(143 229 210 / 32%); }
+.nav-link:hover, .nav-link.active { color: #153328; }
 .nav-footer { margin-top: auto; color: #87a99b; font: .7rem "DM Mono", monospace; }
 .dashboard-main { min-width: 0; overflow-y: auto; padding: clamp(1.5rem, 5vw, 4rem); }
 .dashboard-page { max-width: 980px; }

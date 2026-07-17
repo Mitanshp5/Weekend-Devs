@@ -32,6 +32,12 @@ export function StartPage() {
         </div>
         <p className="hero-copy">Start with a short diagnostic. PRISM builds an explainable learning path from your responses—not a one-size-fits-all lesson.</p>
         <motion.div className="diagnostic-card" {...interaction} transition={{ type: "spring", stiffness: 380, damping: 25 }}>
+          <motion.span
+            aria-hidden="true"
+            className="diagnostic-scan"
+            animate={reduceMotion ? { opacity: 0 } : { x: ["-135%", "320%"], opacity: [0, 0, 0.7, 0] }}
+            transition={reduceMotion ? { duration: 0.01 } : { duration: 2.8, repeat: Infinity, repeatDelay: 1.4, ease: "easeInOut" }}
+          />
           <div>
             <p className="card-label">Your first step</p>
             <h2>5-question diagnostic</h2>
