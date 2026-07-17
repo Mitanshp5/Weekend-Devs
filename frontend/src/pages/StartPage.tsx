@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 
 import { PageTransition } from "../components/PageTransition";
+import { PrismParticleField } from "../components/PrismParticleField";
 import { PrismSignature } from "../components/PrismSignature";
 
 export function StartPage() {
   return (
     <PageTransition className="app-shell">
+      <PrismParticleField />
       <section className="hero" aria-labelledby="page-title">
         <div className="hero-heading">
           <div>

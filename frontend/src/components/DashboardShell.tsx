@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useLocation, useOutlet } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
@@ -8,6 +8,7 @@ export function DashboardShell() {
   const location = useLocation();
   const outlet = useOutlet();
   const reduceMotion = useReducedMotion();
+  const [hoveredDestination, setHoveredDestination] = useState<string | null>(null);
 
   return (
     <div className="dashboard-shell">
@@ -15,9 +16,29 @@ export function DashboardShell() {
         <NavLink className="brand" to="/learn">PRISM</NavLink>
         <nav>
           {navigationItems.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+              style={({ isActive }) => ({ color: isActive ? "#f7fff5" : "#c5ded1" })}
+              onMouseEnter={() => setHoveredDestination(item.to)}
+              onMouseLeave={() => setHoveredDestination(null)}
+              onFocus={() => setHoveredDestination(item.to)}
+              onBlur={() => setHoveredDestination(null)}
+            >
               {({ isActive }) => (
                 <>
+                  {hoveredDestination === item.to && (
+                    <motion.span
+                      aria-hidden="true"
+                      className="prism-nav-flow"
+                      data-motion="prism-nav-flow"
+                      data-testid="prism-nav-flow"
+                      initial={false}
+                      layoutId="prism-flowing-navigation"
+                      transition={reduceMotion ? { duration: 0.01 } : { type: "spring", stiffness: 360, damping: 30, mass: 0.7 }}
+                    />
+                  )}
                   {isActive && (
                     <motion.span
                       aria-hidden="true"

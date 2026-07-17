@@ -32,6 +32,14 @@ The UI presents these as user-facing product stages, not as a chain-of-thought t
 - **Hint ladder:** nudge → worked step → analogous example → direct answer only by deliberate escalation.
 - **Evidence ledger:** visible history of recommendations and changes, supplied by API attempt events.
 
+## Visual implementation references
+
+- **particles.casberry.in:** informed the low-density animated PRISM particle field; implemented as ten Motion particles rather than a heavy full-screen WebGL simulation.
+- **React Bits:** informed the spring-based flowing navigation surface and dome-like curriculum cards.
+- **animos.app:** informed long, seamless motion loops instead of short distracting repeats.
+- **styles.refero.design:** informed the quiet, high-contrast frosted-glass dashboard sidebar and restrained surface treatment.
+- **manus.im:** informed an editorial hierarchy where the primary action and content remain clearer than the effects.
+
 ## Sources
 
 - [LangGraph agent overview](https://langchain-ai.github.io/langgraph/agents/overview/) — stateful agent systems and human-in-the-loop control.

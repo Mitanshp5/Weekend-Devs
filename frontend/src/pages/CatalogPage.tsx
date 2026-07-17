@@ -28,6 +28,7 @@ export function CatalogPage() {
         <motion.div className="placeholder-grid" variants={containerVariants} initial="hidden" animate="show">
           {subjects.map((subject) => (
             <motion.div
+              className="subject-dome-item"
               key={subject.slug}
               variants={itemVariants}
               whileHover={reduceMotion ? undefined : { y: -6, scale: 1.02 }}
