@@ -90,9 +90,9 @@ In one 3-minute flow, a judge can see:
 
 ## 2.1 Build a real concept graph, not decorative nodes
 
-### Initial scope
+### Illustrative scope only — not a committed PRISM subject
 
-**Class 8 Mathematics — Linear Equations in One Variable**
+**Class 8 Mathematics — Linear Equations in One Variable** is an example used to make the data contracts and algorithms concrete. The team must select the actual first grade-subject unit before authoring curriculum content, diagnostic questions, or misconception rules.
 
 ```text
 Number operations

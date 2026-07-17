@@ -14,8 +14,8 @@ It is **not** a production LMS, a multi-grade curriculum platform, or a general-
 
 | Area | Committed scope |
 |---|---|
-| Subject | Class 8 Mathematics only |
-| Learning unit | Linear Equations in One Variable |
+| Subject | One team-selected STEM grade-subject domain, confirmed before content authoring |
+| Learning unit | One bounded, prerequisite-rich unit within that domain |
 | Concept graph | 8–10 reviewed concepts; direct prerequisite edges; 6–10 known misconceptions |
 | Diagnostic | 5 questions across foundational, grade-level, and advanced evidence |
 | Adaptive paths | Foundational, Grade-Level, Advanced; one 8–10 minute lesson per path |
@@ -66,7 +66,7 @@ No microservices, vector database, or distributed queue in week one. Logical bou
 
 | Day | Outcome | Must be demonstrably true |
 |---|---|---|
-| 1 | Curriculum graph, question bank, data schema, seeded personas | Every question has a concept, scoring rule, misconception tag/hint, and citation |
+| 1 | Select the domain; then create its curriculum graph, question bank, data schema, and seeded personas | Every question has a concept, scoring rule, misconception tag/hint, and citation |
 | 2 | Diagnostic, deterministic scorer, mastery updates, path assignment | Five seeded learners receive explainable different paths |
 | 3 | Three micro-lessons, practice loop, graph visualization | Completion and attempts update persisted learner state |
 | 4 | Root-gap inference, discriminating questions, authored remediation | Known wrong answers produce correct evidence traces |

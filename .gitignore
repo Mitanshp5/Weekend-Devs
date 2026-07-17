@@ -5,6 +5,7 @@ graphify-out/
 !*.example
 node_modules/
 .venv/
+*.egg-info/
 __pycache__/
 dist/
 build/
