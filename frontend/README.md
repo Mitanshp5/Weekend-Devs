@@ -11,6 +11,11 @@ npm run build
 npm run dev
 ```
 
+## Layout contract
+
+- Landing/login/start pages that are not dashboards are viewport-locked and never scroll.
+- Future dashboard navigation remains fixed and non-scrollable; only the dashboard content region may scroll.
+
 ## Current slice
 
 - Explainable diagnostic landing screen

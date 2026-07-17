@@ -8,11 +8,11 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; }
+body { margin: 0; min-width: 320px; overflow: hidden; }
 button { font: inherit; }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   padding: clamp(1.5rem, 5vw, 5rem);
   background:
