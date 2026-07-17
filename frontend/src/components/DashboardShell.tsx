@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, useLocation, useOutlet } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "motion/react";
 
 import { navigationItems } from "../app/navigation";
 

@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 
 export function PageTransition({ children, className }: { children: ReactNode; className?: string }) {
   const reduceMotion = useReducedMotion();
