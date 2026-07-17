@@ -9,7 +9,7 @@ export function PageTransition({ children, className }: { children: ReactNode; c
     <motion.div
       className={className}
       data-motion="page-transition"
-      initial={{ opacity: 0, y: offset }}
+      initial={reduceMotion ? false : { opacity: 0.96, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -offset }}
       transition={{ duration: reduceMotion ? 0.01 : 0.4, ease: [0.22, 1, 0.36, 1] }}

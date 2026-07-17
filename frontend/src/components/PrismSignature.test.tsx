@@ -9,5 +9,6 @@ describe("PrismSignature", () => {
 
     expect(screen.getByTestId("prism-signature")).toHaveAttribute("data-motion", "prism-signature");
     expect(screen.getByTestId("prism-signature")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getAllByTestId("prism-orbit-path")).toHaveLength(3);
   });
 });

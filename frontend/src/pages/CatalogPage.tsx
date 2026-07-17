@@ -34,7 +34,7 @@ export function CatalogPage() {
               whileTap={reduceMotion ? undefined : { scale: 0.985 }}
               transition={{ type: "spring", stiffness: 380, damping: 25 }}
             >
-              <Link className="subject-link" to={`/lesson/${subject.slug}`}>
+              <Link className="subject-link" to={`/learn/${subject.slug}`}>
                 <article><h2>{subject.name}</h2><p>{subject.unit_count} units available</p></article>
               </Link>
             </motion.div>
