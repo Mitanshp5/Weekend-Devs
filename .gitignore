@@ -11,3 +11,5 @@ dist/
 build/
 *.tsbuildinfo
 *.db
+start.bat
+stop.bat
