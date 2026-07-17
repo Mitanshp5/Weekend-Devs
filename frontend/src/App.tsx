@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import "./App.css";
 import { DashboardShell } from "./components/DashboardShell";
@@ -7,10 +8,14 @@ import { DiagnosticPage } from "./pages/DiagnosticPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { StartPage } from "./pages/StartPage";
 
-export default function App() {
+function AppRoutes() {
+  const location = useLocation();
+  const isDashboard = location.pathname !== "/" && location.pathname !== "/diagnostic";
+  const rootKey = isDashboard ? "dashboard" : location.pathname;
+
   return (
-    <BrowserRouter>
-      <Routes>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={rootKey}>
         <Route path="/" element={<StartPage />} />
         <Route path="/diagnostic" element={<DiagnosticPage />} />
         <Route element={<DashboardShell />}>
@@ -22,6 +27,14 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   );
 }

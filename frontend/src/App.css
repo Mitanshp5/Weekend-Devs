@@ -57,5 +57,7 @@ h2 { margin: 0; font-size: 1.2rem; }
 .dashboard-page h1 { color: #153328; }
 .page-copy { max-width: 620px; color: #557066; line-height: 1.7; }
 .placeholder-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 3rem; }
-.placeholder-grid article { min-height: 150px; padding: 1.25rem; border-radius: .9rem; background: #fff; box-shadow: 0 10px 35px rgb(21 51 40 / 8%); }
+.placeholder-grid article { min-height: 150px; padding: 1.25rem; border-radius: .9rem; background: #fff; box-shadow: 0 10px 35px rgb(21 51 40 / 8%); transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer; }
+.placeholder-grid article:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 15px 45px rgb(21 51 40 / 12%); }
+.placeholder-grid article:active { transform: translateY(0) scale(0.98); }
 @media (max-width: 640px) { .hero { margin-top: 3vh; } .diagnostic-card { align-items: flex-start; flex-direction: column; } .signals { grid-template-columns: 1fr; margin-top: 2.5rem; } .signal-card { min-height: auto; } .dashboard-shell { grid-template-columns: 72px minmax(0, 1fr); } .dashboard-nav { padding: 1rem .65rem; gap: 2rem; } .dashboard-nav .brand { font-size: 0; } .dashboard-nav .brand::first-letter { font-size: 1rem; } .nav-link { overflow: hidden; padding: .7rem .25rem; font-size: .66rem; text-align: center; } .placeholder-grid { grid-template-columns: 1fr; } }

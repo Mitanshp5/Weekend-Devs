@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
+import { PageTransition } from "../components/PageTransition";
 
 export function DiagnosticPage() {
   return (
-    <main className="app-shell">
+    <PageTransition className="app-shell">
       <section className="hero diagnostic-step" aria-labelledby="diagnostic-title">
         <p className="eyebrow">PRISM · diagnostic</p>
         <p className="question-count">Question 1 of 5</p>
@@ -17,6 +18,6 @@ export function DiagnosticPage() {
           <Link to="/learn" className="primary-action">Continue</Link>
         </div>
       </section>
-    </main>
+    </PageTransition>
   );
 }
