@@ -1,4 +1,4 @@
-# PRISM — Project Setup Guide
+# 🌈 PRISM — Project Setup Guide
 
 This guide details how to set up and run the PRISM STEM-learning prototype workspace on your local machine.
 
@@ -15,23 +15,33 @@ Ensure you have the following installed and running:
 
 ## ⚙️ Environment Configuration
 
-Before running the launchers, create **one** `.env` file in the repository root from `.env.example`. It is shared by Docker Compose and the backend:
+PRISM uses a single unified configuration file. Before running the launcher scripts, configure the environment:
 
-```bash
-cp .env.example .env
-```
+1. **Create the `.env` file** at the root of the repository:
+   ```bash
+   cp .env.example .env
+   ```
+2. **Configure local values** in that `.env` file (e.g. database credentials and port):
+   ```env
+   POSTGRES_DB=prism
+   POSTGRES_USER=prism
+   POSTGRES_PASSWORD=your_local_secret_password
+   POSTGRES_PORT=5432
+   PRISM_DATABASE_URL=postgresql://prism:your_local_secret_password@127.0.0.1:5432/prism
+   ```
 
-Set the local values in that root file, including `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `PRISM_DATABASE_URL`.
+> [!NOTE]
+> This single root `.env` file is automatically read and shared by Docker Compose, the backend API, and the testing suite.
 
 ---
 
 ## 🚀 How to Run the Project
 
 We have automated scripts at the root level that handle:
-* Starting the PostgreSQL container inside Docker.
-* Resolving and creating the Python virtual environment (`.venv`) and installing dependencies.
-* Resolving and installing Node packages (`npm install`) if missing.
-* Concurrently running both the API server and frontend interface.
+1. Starting the PostgreSQL container inside Docker.
+2. Resolving/creating the Python virtual environment (`.venv`) and installing dependencies.
+3. Resolving/installing Node packages (`npm install`) if missing.
+4. Concurrently running both the API server and frontend interface.
 
 ### 💻 On Windows (Command Prompt / CMD)
 Simply run the batch launcher from the root directory:
@@ -56,9 +66,12 @@ run-dev.bat
 ## 🛠️ Accessing the Applications
 
 Once the launchers report success, access the services here:
-* 🌐 **Frontend App**: [http://localhost:5173](http://localhost:5173)
-* ⚙️ **Backend API**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-* 🏥 **Backend Health Check**: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+
+| Service | Address |
+| :--- | :--- |
+| 🌐 **Frontend App** | [http://localhost:5173](http://localhost:5173) |
+| ⚙️ **Backend API** | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
+| 🏥 **Backend Health Check** | [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) |
 
 ---
 
@@ -66,7 +79,7 @@ Once the launchers report success, access the services here:
 
 ### 1. Database Connection Failures / Password Mismatches
 If the backend tests or servers fail to connect to PostgreSQL with a password authentication error:
-* Check your `backend/.env` file and make sure the password in `PRISM_DATABASE_URL` matches the `POSTGRES_PASSWORD` defined in the root `.env`.
+* Check the `.env` file in the project root and make sure the password in `PRISM_DATABASE_URL` matches the `POSTGRES_PASSWORD` defined in the same file.
 * If you changed the password, restart your Docker container so it uses the updated credentials:
   ```bash
   docker compose down -v

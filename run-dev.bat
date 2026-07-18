@@ -4,6 +4,13 @@ echo =========================================
 echo       PRISM Dev Environment Launcher    
 echo =========================================
 
+:: Load root .env file if it exists
+if exist ".env" (
+    for /f "usebackq delims== tokens=1,2" %%A in (".env") do (
+        set "%%A=%%B"
+    )
+)
+
 :: Detect Python command (py, python, or python3)
 set PYTHON_CMD=
 
