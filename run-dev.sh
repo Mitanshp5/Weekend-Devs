@@ -4,6 +4,17 @@ echo "========================================="
 echo "       PRISM Dev Environment Launcher    "
 echo "========================================="
 
+# Auto-create .env from .env.example if missing
+if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+        echo "[WARNING] .env file not found. Copying .env.example to .env..."
+        cp .env.example .env
+    else
+        echo "[ERROR] Neither .env nor .env.example was found in the root directory!"
+        exit 1
+    fi
+fi
+
 # Detect Python
 PYTHON_CMD=""
 for cmd in py python python3; do

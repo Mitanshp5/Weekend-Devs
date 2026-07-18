@@ -4,6 +4,25 @@ echo =========================================
 echo       PRISM Dev Environment Launcher    
 echo =========================================
 
+:: Auto-create .env from .env.example if missing
+if not exist ".env" (
+    if exist ".env.example" (
+        echo [WARNING] .env file not found. Copying .env.example to .env...
+        copy .env.example .env >nul
+    ) else (
+        echo [ERROR] Neither .env nor .env.example was found in the root directory!
+        pause
+        exit /b 1
+    )
+)
+
+:: Load root .env file if it exists
+if exist ".env" (
+    for /f "usebackq delims== tokens=1,2" %%A in (".env") do (
+        set "%%A=%%B"
+    )
+)
+
 :: Detect Python command (py, python, or python3)
 set PYTHON_CMD=
 
