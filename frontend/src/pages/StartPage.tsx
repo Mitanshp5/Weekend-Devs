@@ -1,7 +1,27 @@
 import { Link } from "react-router-dom";
 
-const signals = ["Find your current starting point", "Get an explainable learning path", "See exactly what to practise next"];
+import { PageTransition } from "../components/PageTransition";
+import { PrismParticleField } from "../components/PrismParticleField";
+import { PrismSignature } from "../components/PrismSignature";
 
 export function StartPage() {
-  return <main className="app-shell"><section className="hero" aria-labelledby="page-title"><p className="eyebrow">PRISM · adaptive learning</p><h1 id="page-title">Ready to learn your way?</h1><p className="hero-copy">Start with a short diagnostic. PRISM builds an explainable learning path from your responses—not a one-size-fits-all lesson.</p><div className="diagnostic-card"><div><p className="card-label">Your first step</p><h2>5-question diagnostic</h2><p>About 3 minutes · Your responses stay visible and explainable.</p></div><Link className="primary-action" to="/diagnostic">Begin diagnostic</Link></div></section><section className="signals" aria-label="How PRISM personalizes learning">{signals.map((signal, index) => <article key={signal} className="signal-card"><span aria-hidden="true">0{index + 1}</span><p>{signal}</p></article>)}</section></main>;
+  return (
+    <PageTransition className="app-shell">
+      <PrismParticleField />
+      <section className="hero" aria-labelledby="page-title">
+        <div className="hero-heading">
+          <div>
+            <p className="eyebrow">PRISM · adaptive learning</p>
+            <h1 id="page-title">Learning, made legible.</h1>
+          </div>
+          <PrismSignature />
+        </div>
+        <p className="hero-copy">PRISM does more than mark answers. It captures evidence, maps the smallest concept gap, and makes the next learning step visible.</p>
+        <div className="hero-action">
+          <p>Start with a short check-in. PRISM will explain its recommendation before you choose what comes next.</p>
+          <Link className="primary-action" to="/diagnostic">Start diagnostic</Link>
+        </div>
+      </section>
+    </PageTransition>
+  );
 }

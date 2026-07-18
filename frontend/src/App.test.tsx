@@ -7,21 +7,21 @@ import App from "./App";
 describe("App", () => {
   beforeEach(() => window.history.pushState({}, "", "/"));
 
-  it("shows the subject-agnostic diagnostic start screen", () => {
+  it("shows PRISM's evidence-first learning entry", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Ready to learn your way?" })).toBeVisible();
-    expect(screen.getByText("5-question diagnostic")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Begin diagnostic" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Learning, made legible." })).toBeInTheDocument();
+    expect(screen.getByText(/Start with a short check-in/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Start diagnostic" })).toBeInTheDocument();
   });
 
-  it("moves into the first diagnostic step when the learner begins", async () => {
+  it("moves to the evidence intake view when the learner starts", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("link", { name: "Begin diagnostic" }));
+    await user.click(screen.getByRole("link", { name: "Start diagnostic" }));
 
-    expect(screen.getByText("Question 1 of 5")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(await screen.findByRole("heading", { name: "Start with evidence, not a label." })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Explore curriculum atlas" })).toBeInTheDocument();
   });
 });

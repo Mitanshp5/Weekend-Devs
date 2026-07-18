@@ -6,7 +6,7 @@
 |---|---|---|
 | `/` | viewport-locked start page | introduce PRISM and enter diagnostic |
 | `/diagnostic` | viewport-locked start page | five-question diagnostic flow |
-| `/learn` | learner dashboard | recommended path and next lesson |
+| `/learn` | learner dashboard | database-backed Grade 8 subject catalog and later recommended path |
 | `/lesson/:lessonId` | learner dashboard | micro-lesson and practice |
 | `/tutor` | learner dashboard | grounded doubt tutor |
 | `/progress` | learner dashboard | mastery and concept evidence |
