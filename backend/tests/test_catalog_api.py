@@ -2,12 +2,9 @@ import asyncio
 import os
 
 import httpx
-from dotenv import load_dotenv
 
 from app.database import database_url
 from app.main import app
-
-load_dotenv()
 
 DATABASE_URL = os.getenv("PRISM_DATABASE_URL", "postgresql://prism:prism_dev_only@127.0.0.1:5432/prism")
 

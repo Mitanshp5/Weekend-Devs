@@ -15,15 +15,13 @@ Ensure you have the following installed and running:
 
 ## ⚙️ Environment Configuration
 
-Before running the launchers, verify your environment configurations:
-1. **Root `.env`**: Make sure `.env` exists in the repository root folder. You can copy it from `.env.example`:
-   ```bash
-   cp .env.example .env
-   ```
-2. **Backend `.env`**: Make sure `.env` also exists in the `backend/` directory, containing the correct database URL referencing your PostgreSQL container:
-   ```env
-   PRISM_DATABASE_URL=postgresql://prism:<your_password>@127.0.0.1:5432/prism
-   ```
+Before running the launchers, create **one** `.env` file in the repository root from `.env.example`. It is shared by Docker Compose and the backend:
+
+```bash
+cp .env.example .env
+```
+
+Set the local values in that root file, including `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `PRISM_DATABASE_URL`.
 
 ---
 

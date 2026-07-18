@@ -75,13 +75,12 @@ fi
 
 # 2. Check Backend Virtual Environment
 echo "[2/4] Setting up backend environment..."
-BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/backend"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$PROJECT_ROOT/backend"
 VENV_DIR="$BACKEND_DIR/.venv"
 
-if [ -f "$BACKEND_DIR/.env" ]; then
-    source "$BACKEND_DIR/.env"
-elif [ -f "$(dirname "${BASH_SOURCE[0]}")/.env" ]; then
-    source "$(dirname "${BASH_SOURCE[0]}")/.env"
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    source "$PROJECT_ROOT/.env"
 fi
 
 if [ ! -d "$VENV_DIR" ]; then
