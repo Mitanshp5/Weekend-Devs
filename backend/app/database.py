@@ -3,9 +3,12 @@
 import os
 
 import psycopg
+from dotenv import load_dotenv
 from psycopg.rows import dict_row
 
 from app.curriculum import CURRICULUM_SOURCES, CURRICULUM_UNITS, SOURCE_FOR_SUBJECT
+
+load_dotenv()
 
 SEED_SUBJECTS = (
     (8, "mathematics", "Mathematics"),
