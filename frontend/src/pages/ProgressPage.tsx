@@ -13,7 +13,6 @@ import { DonutChart } from "../components/DonutChart";
 import {
   fetchProgress,
   fetchConceptEvidence,
-  fetchDemoLearner,
   type MasteryState,
   type TimelineEntry,
 } from "../api/tutorAnalytics";
@@ -69,27 +68,27 @@ export function ProgressPage() {
   const [concepts, setConcepts] = useState<MasteryState[]>([]);
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
-  const [learnerId, setLearnerId] = useState<string | null>(null);
+  const [learnerId, setLearnerId] = useState(() => new URLSearchParams(window.location.search).get("learner") ?? "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const timelineRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    fetchDemoLearner()
-      .then((demo) => {
-        setLearnerId(demo.learner_id);
-        return fetchProgress(demo.learner_id);
-      })
+    if (!learnerId.trim()) {
+      setConcepts([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    fetchProgress(learnerId)
       .then((data) => {
         setConcepts(data.concepts);
-        setLoading(false);
+        setError(null);
       })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [learnerId]);
 
   const handleConceptClick = useCallback((conceptId: string) => {
     if (!learnerId) return;
@@ -123,6 +122,11 @@ export function ProgressPage() {
         <span>›</span>
         <span>Analytics</span>
       </div>
+
+      <label className="mg-learner-input">
+        Learner ID
+        <input value={learnerId} onChange={(event) => setLearnerId(event.target.value)} placeholder="Enter your learner ID" />
+      </label>
 
       <h1 style={{ maxWidth: "20ch", fontSize: "clamp(2rem, 4vw, 3rem)" }}>
         Analytics

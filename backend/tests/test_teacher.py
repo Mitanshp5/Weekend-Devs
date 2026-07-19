@@ -6,7 +6,7 @@ import os
 import httpx
 
 from app.main import app as tutor_analytics_app
-from app.tutor_analytics_models import seed_tutor_analytics_data
+from tests.tutor_analytics_fixtures import seed_tutor_analytics_data
 
 DATABASE_URL = os.getenv(
     "PRISM_DATABASE_URL",
@@ -24,7 +24,7 @@ def request(path: str) -> httpx.Response:
 
 def setup_module():
     os.environ.setdefault("PRISM_DATABASE_URL", DATABASE_URL)
-    seed_tutor_analytics_data(force=True)
+    seed_tutor_analytics_data()
 
 
 def test_cohort_returns_band_distribution(monkeypatch):
@@ -60,10 +60,10 @@ def test_cohort_returns_intervention_recommendations(monkeypatch):
 
 def test_student_card_returns_full_data(monkeypatch):
     monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
-    resp = request("/api/teacher/student/student-02")
+    resp = request("/api/teacher/student/test-learner-2")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["learner_id"] == "student-02"
+    assert body["learner_id"] == "test-learner-2"
     assert body["likely_blocker_concept"] == "eq.inverse_operations"
     assert body["blocker_confidence"] == 0.78
     assert body["recommended_action"] is not None

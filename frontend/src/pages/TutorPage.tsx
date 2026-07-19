@@ -13,7 +13,6 @@ import { PageTransition } from "../components/PageTransition";
 import {
   fetchQuestions,
   postTutorRespond,
-  fetchDemoLearner,
   type QuestionSummary,
   type TutorResponse,
 } from "../api/tutorAnalytics";
@@ -57,7 +56,7 @@ interface ChatMessage {
 }
 
 export function TutorPage() {
-  const [learnerId, setLearnerId] = useState<string | null>(null);
+  const [learnerId, setLearnerId] = useState(() => new URLSearchParams(window.location.search).get("learner") ?? "");
   const [questions, setQuestions] = useState<QuestionSummary[]>([]);
   const [selectedQ, setSelectedQ] = useState<QuestionSummary | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -75,14 +74,6 @@ export function TutorPage() {
         setQuestionsLoading(false);
       })
       .catch(() => setQuestionsLoading(false));
-
-    fetchDemoLearner()
-      .then((demo) => {
-        setLearnerId(demo.learner_id);
-      })
-      .catch(() => {
-        setLearnerId("student-02");
-      });
   }, []);
 
   useEffect(() => {
@@ -183,6 +174,11 @@ export function TutorPage() {
         <span>›</span>
         <span>PRISM AI Tutor</span>
       </div>
+
+      <label className="mg-learner-input">
+        Learner ID
+        <input value={learnerId} onChange={(event) => setLearnerId(event.target.value)} placeholder="Enter your learner ID" />
+      </label>
 
       {/* AI Tutor featured card (Magoosh-style) */}
       {!selectedQ && (

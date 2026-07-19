@@ -6,7 +6,7 @@ import os
 import httpx
 
 from app.main import app as tutor_analytics_app
-from app.tutor_analytics_models import seed_tutor_analytics_data
+from tests.tutor_analytics_fixtures import seed_tutor_analytics_data
 
 DATABASE_URL = os.getenv(
     "PRISM_DATABASE_URL",
@@ -24,7 +24,7 @@ def request(method: str, path: str, **kwargs) -> httpx.Response:
 
 def setup_module():
     os.environ.setdefault("PRISM_DATABASE_URL", DATABASE_URL)
-    seed_tutor_analytics_data(force=True)
+    seed_tutor_analytics_data()
 
 
 # -- Fallback tests --

@@ -527,27 +527,3 @@ def list_questions() -> dict:
             for q in QUESTION_BANK.values()
         ]
     }
-
-
-@router.get("/demo-learner")
-def get_demo_learner() -> dict:
-    """Return an available demo learner from seeded data.
-
-    This avoids hardcoding learner IDs in the frontend.
-    When no learners exist, returns a sensible default.
-    """
-    initialize_tutor_analytics_tables()
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT learner_id
-                FROM teacher_summaries
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """
-            )
-            row = cur.fetchone()
-            if row:
-                return {"learner_id": row["learner_id"], "is_demo": True}
-            return {"learner_id": "student-02", "is_demo": True}
