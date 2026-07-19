@@ -1,4 +1,4 @@
-"""Tutor orchestrator for PRISM (Person 3).
+"""Tutor orchestrator for PRISM (Tutor Analytics).
 
 Implements the four-mode Socratic escalation ladder with a deterministic
 authored-content fallback.  The LLM path is stubbed — the fallback path
@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.database import connect
-from app.person3_models import initialize_person3_tables
+from app.tutor_analytics_models import initialize_tutor_analytics_tables
 from app.scoring import score_numeric_answer
 from app.mastery import update_mastery
 
@@ -272,7 +272,7 @@ def tutor_respond(req: TutorRequest) -> dict:
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    initialize_person3_tables()
+    initialize_tutor_analytics_tables()
     concept_id = question["concept_id"]
 
     # 1. Retrieve current mastery/p_know

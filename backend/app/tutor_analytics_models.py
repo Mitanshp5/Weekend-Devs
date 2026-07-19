@@ -1,4 +1,4 @@
-"""Person 3 database tables and seed helpers for PRISM.
+"""Tutor Analytics database tables and seed helpers for PRISM.
 
 Creates tables for tutor sessions, mastery history, teacher summaries,
 and misconception clusters. Designed to co-exist alongside the existing
@@ -10,8 +10,8 @@ from __future__ import annotations
 from app.database import connect, initialize_database
 
 
-def initialize_person3_tables() -> None:
-    """Create Person 3 tables if they do not exist (idempotent)."""
+def initialize_tutor_analytics_tables() -> None:
+    """Create Tutor Analytics tables if they do not exist (idempotent)."""
     initialize_database()  # ensure base tables exist first
     with connect() as connection:
         with connection.cursor() as cursor:
@@ -153,15 +153,20 @@ def _compute_cluster_impact(
     )
 
 
-def seed_person3_data() -> None:
-    """Populate Person 3 tables with synthetic demo data (idempotent)."""
-    initialize_person3_tables()
+def seed_tutor_analytics_data(force: bool = False) -> None:
+    """Populate Tutor Analytics tables with synthetic demo data (idempotent)."""
+    initialize_tutor_analytics_tables()
     with connect() as connection:
         with connection.cursor() as cursor:
-            # Avoid duplicate seeding
-            cursor.execute("SELECT count(*) AS cnt FROM teacher_summaries")
-            if cursor.fetchone()["cnt"] > 0:
-                return
+            if force:
+                cursor.execute(
+                    "TRUNCATE TABLE teacher_summaries, mastery_history, misconception_clusters, tutor_sessions;"
+                )
+            else:
+                # Avoid duplicate seeding
+                cursor.execute("SELECT count(*) AS cnt FROM teacher_summaries")
+                if cursor.fetchone()["cnt"] > 0:
+                    return
 
             for row in SAMPLE_LEARNERS:
                 cursor.execute(

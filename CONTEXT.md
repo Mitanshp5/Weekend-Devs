@@ -21,12 +21,12 @@ PRISM is an adaptive, offline-resilient STEM-learning prototype for mixed-abilit
 
 ## Team Split
 
-| Person      | Scope                                                                     | Branch                             |
-| ----------- | ------------------------------------------------------------------------- | ---------------------------------- |
-| 1           | Diagnostic + adaptive backend (APIs, attempts, misconceptions, sessions)  | —                                  |
-| 2           | Learner experience (diagnostic workspace, lessons, practice, feedback UI) | —                                  |
-| **3 (you)** | **Tutor orchestrator, progress evidence, teacher intervention board**     | `tutor_orch_progress_teacher_view` |
-| 4           | Demo, PPT, integration, QA                                                | —                                  |
+| Person                    | Scope                                                                     | Branch                             |
+| ------------------------- | ------------------------------------------------------------------------- | ---------------------------------- |
+| 1                         | Diagnostic + adaptive backend (APIs, attempts, misconceptions, sessions)  | —                                  |
+| 2                         | Learner experience (diagnostic workspace, lessons, practice, feedback UI) | —                                  |
+| **Tutor Analytics (you)** | **Tutor orchestrator, progress evidence, teacher intervention board**     | `tutor_orch_progress_teacher_view` |
+| 4                         | Demo, PPT, integration, QA                                                | —                                  |
 
 ## Architecture
 
@@ -127,8 +127,8 @@ PostgreSQL
 
 ## Deeper Reference Files
 
-- `my_stuff/PRISM_Master_Spec.md` — Full technical specification (680 lines)
-- `my_stuff/PRISM_Person3_Guide.md` — Person 3 build guide (266 lines)
+- `SPEC_TUTOR_ANALYTICS.md` — Full technical specification for Tutor Analytics (370 lines)
+- `my_stuff/PRISM_Tutor_Analytics_Guide.md` — Tutor Analytics build guide (266 lines)
 - `research/applicable-patterns/FEATURE_PLAYBOOK.md` — Feature playbook (877 lines)
 - `notes/ONE_WEEK_PROTOTYPE_SCOPE.md` — Day-by-day scope and quality gates
 - `notes/PRISM_ARCHITECTURE_OBSERVATIONS.md` — Architecture and entity design

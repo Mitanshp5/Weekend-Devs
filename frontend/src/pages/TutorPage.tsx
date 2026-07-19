@@ -9,7 +9,7 @@ import {
   postTutorRespond,
   type QuestionSummary,
   type TutorResponse,
-} from "../api/person3";
+} from "../api/tutorAnalytics";
 
 export const CONCEPT_NAMES: Record<string, string> = {
   "num.signed_operations": "Integer Operations (Signed Numbers)",

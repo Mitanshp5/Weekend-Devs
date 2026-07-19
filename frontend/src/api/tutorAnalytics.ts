@@ -1,5 +1,5 @@
 /**
- * Person 3 API client — typed fetch helpers for tutor, progress, and teacher endpoints.
+ * Tutor Analytics API client — typed fetch helpers for tutor, progress, and teacher endpoints.
  *
  * Following vercel-react-best-practices: no barrel file, direct imports,
  * early return on errors, and typed responses.

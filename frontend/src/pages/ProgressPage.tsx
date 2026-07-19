@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PageTransition } from "../components/PageTransition";
 import { MasteryBadge } from "../components/MasteryBadge";
-import { fetchProgress, fetchConceptEvidence, type MasteryState, type TimelineEntry } from "../api/person3";
+import { fetchProgress, fetchConceptEvidence, type MasteryState, type TimelineEntry } from "../api/tutorAnalytics";
 import { CONCEPT_NAMES } from "./TutorPage";
 
 const DEMO_LEARNER = "student-02";

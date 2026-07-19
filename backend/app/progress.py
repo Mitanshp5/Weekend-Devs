@@ -1,4 +1,4 @@
-"""Progress evidence endpoints for PRISM (Person 3).
+"""Progress evidence endpoints for PRISM (Tutor Analytics).
 
 Exposes mastery history and evidence ledger data that the frontend
 renders as timelines and per-concept drill-downs.
@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.database import connect
-from app.person3_models import initialize_person3_tables
+from app.tutor_analytics_models import initialize_tutor_analytics_tables
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
 
@@ -47,7 +47,7 @@ def _band_for_p_know(p_know: float, independent_correct: int) -> dict:
 @router.get("/{learner_id}")
 def get_learner_progress(learner_id: str) -> dict:
     """Return the latest mastery state per concept for a learner."""
-    initialize_person3_tables()
+    initialize_tutor_analytics_tables()
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -77,7 +77,7 @@ def get_learner_progress(learner_id: str) -> dict:
 @router.get("/{learner_id}/concept/{concept_id}")
 def get_concept_evidence(learner_id: str, concept_id: str) -> dict:
     """Return the full evidence timeline for a learner-concept pair."""
-    initialize_person3_tables()
+    initialize_tutor_analytics_tables()
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(

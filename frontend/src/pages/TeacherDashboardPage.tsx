@@ -20,7 +20,7 @@ import {
   type CohortResponse,
   type ClusterData,
   type StudentCardData,
-} from "../api/person3";
+} from "../api/tutorAnalytics";
 import { CONCEPT_NAMES } from "./TutorPage";
 
 const BAND_LABELS: Record<string, string> = {

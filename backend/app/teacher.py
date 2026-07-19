@@ -1,4 +1,4 @@
-"""Teacher intervention dashboard endpoints for PRISM (Person 3).
+"""Teacher intervention dashboard endpoints for PRISM (Tutor Analytics).
 
 Exposes cohort overview, individual student intervention cards, and
 ranked misconception clusters — all derived from persisted event data.
@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.database import connect
-from app.person3_models import initialize_person3_tables
+from app.tutor_analytics_models import initialize_tutor_analytics_tables
 
 router = APIRouter(prefix="/api/teacher", tags=["teacher"])
 
@@ -21,7 +21,7 @@ def get_cohort_overview(grade: int = 8) -> dict:
     Includes band distribution, session counts, top clusters, and
     ranked intervention recommendations.
     """
-    initialize_person3_tables()
+    initialize_tutor_analytics_tables()
     with connect() as conn:
         with conn.cursor() as cur:
             # Band distribution
@@ -81,7 +81,7 @@ def get_cohort_overview(grade: int = 8) -> dict:
 @router.get("/student/{learner_id}")
 def get_student_card(learner_id: str) -> dict:
     """Return the intervention card for a specific student."""
-    initialize_person3_tables()
+    initialize_tutor_analytics_tables()
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -106,7 +106,7 @@ def get_student_card(learner_id: str) -> dict:
 @router.get("/clusters")
 def get_misconception_clusters(grade: int = 8) -> dict:
     """Return ranked misconception clusters for a grade."""
-    initialize_person3_tables()
+    initialize_tutor_analytics_tables()
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(

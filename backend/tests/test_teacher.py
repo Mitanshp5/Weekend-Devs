@@ -1,12 +1,12 @@
-"""Tests for Person 3 teacher dashboard endpoints."""
+"""Tests for Tutor Analytics teacher dashboard endpoints."""
 
 import asyncio
 import os
 
 import httpx
 
-from app.person3_router import person3_app
-from app.person3_models import seed_person3_data
+from app.tutor_analytics_router import tutor_analytics_app
+from app.tutor_analytics_models import seed_tutor_analytics_data
 
 DATABASE_URL = os.getenv(
     "PRISM_DATABASE_URL",
@@ -16,7 +16,7 @@ DATABASE_URL = os.getenv(
 
 def request(path: str) -> httpx.Response:
     async def send() -> httpx.Response:
-        transport = httpx.ASGITransport(app=person3_app)
+        transport = httpx.ASGITransport(app=tutor_analytics_app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             return await client.get(path)
     return asyncio.run(send())
@@ -24,7 +24,7 @@ def request(path: str) -> httpx.Response:
 
 def setup_module():
     os.environ.setdefault("PRISM_DATABASE_URL", DATABASE_URL)
-    seed_person3_data()
+    seed_tutor_analytics_data(force=True)
 
 
 def test_cohort_returns_band_distribution(monkeypatch):

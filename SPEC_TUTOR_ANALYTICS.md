@@ -1,14 +1,14 @@
-# PRISM — Person 3 Implementation Spec
+# PRISM — Tutor Analytics Implementation Spec
 
 ### Tutor Orchestrator · Progress Evidence · Teacher Intervention Board
 
-> **Condensed implementation reference for Person 3's scope.** For full context see `CONTEXT.md`. For deep detail see `my_stuff/PRISM_Person3_Guide.md` and `my_stuff/PRISM_Master_Spec.md`.
+> **Condensed implementation reference for Tutor Analytics' scope.** For full context see `CONTEXT.md`. For deep detail see `my_stuff/PRISM_Tutor_Analytics_Guide.md` and `my_stuff/PRISM_Master_Spec.md`.
 
 ---
 
 ## ⚠️ Collaboration Rule: NEW FILES ONLY
 
-This is a collaborative project. Person 3 must **never modify or delete existing files**. All work goes into NEW files to avoid merge conflicts. Extension points:
+This is a collaborative project. Developers must **never modify or delete existing files**. All work goes into NEW files to avoid merge conflicts. Extension points:
 
 - **Backend:** Add new modules under `backend/app/` (e.g., `tutor.py`, `progress.py`, `teacher.py`)
 - **Backend routes:** Add new router files; register them in main via a new router include (or create a separate router module)
