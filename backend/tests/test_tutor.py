@@ -5,7 +5,7 @@ import os
 
 import httpx
 
-from app.tutor_analytics_router import tutor_analytics_app
+from app.main import app as tutor_analytics_app
 from app.tutor_analytics_models import seed_tutor_analytics_data
 
 DATABASE_URL = os.getenv(

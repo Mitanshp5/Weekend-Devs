@@ -5,7 +5,7 @@ import os
 
 import httpx
 
-from app.tutor_analytics_router import tutor_analytics_app
+from app.main import app as tutor_analytics_app
 from app.tutor_analytics_models import seed_tutor_analytics_data
 
 DATABASE_URL = os.getenv(
@@ -64,10 +64,13 @@ def test_progress_evidence_timeline(monkeypatch):
     assert timestamps == sorted(timestamps)
 
 
-def test_progress_404_for_unknown_learner(monkeypatch):
+def test_progress_200_for_unknown_learner(monkeypatch):
     monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
     resp = request("/api/progress/nonexistent-student")
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["learner_id"] == "nonexistent-student"
+    assert body["concepts"] == []
 
 
 def test_progress_404_for_unknown_concept(monkeypatch):

@@ -171,3 +171,16 @@ export function fetchClusters(
 ): Promise<{ grade: number; clusters: ClusterData[] }> {
   return fetchJSON(`/teacher/clusters?grade=${grade}`);
 }
+
+// ---------------------------------------------------------------------------
+// Demo learner
+// ---------------------------------------------------------------------------
+
+export interface DemoLearnerResponse {
+  learner_id: string;
+  is_demo: boolean;
+}
+
+export function fetchDemoLearner(): Promise<DemoLearnerResponse> {
+  return fetchJSON("/tutor/demo-learner");
+}

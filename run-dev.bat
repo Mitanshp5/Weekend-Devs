@@ -92,6 +92,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
+:: 7. Seed Tutor Analytics data
+echo Seeding Tutor Analytics data...
+backend\.venv\Scripts\python.exe -c "from app.database import seed_tutor_analytics_data; seed_tutor_analytics_data(force=True)"
+if errorlevel 1 (
+    echo [WARNING] Failed to seed Tutor Analytics data. Skipping.
+)
+
 echo.
 echo =========================================
 echo PRISM is running!

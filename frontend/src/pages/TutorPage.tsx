@@ -1,12 +1,19 @@
 /**
- * TutorPage — structured Socratic tutor interface.
+ * TutorPage — Magoosh-inspired structured Socratic tutor interface.
+ *
+ * Features:
+ *   - AI Tutor featured promo card (Magoosh style)
+ *   - Question selector as lesson list
+ *   - Chat widget with quick-select options
+ *   - Hint escalation buttons
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageTransition } from "../components/PageTransition";
 import {
   fetchQuestions,
   postTutorRespond,
+  fetchDemoLearner,
   type QuestionSummary,
   type TutorResponse,
 } from "../api/tutorAnalytics";
@@ -20,14 +27,26 @@ export const CONCEPT_NAMES: Record<string, string> = {
 };
 
 const MODE_DISPLAY: Record<string, { label: string; color: string; icon: string }> = {
-  socratic_hint: { label: "Socratic hint", color: "#4d8b72", icon: "💭" },
-  explain_error: { label: "Error explanation", color: "#c5a600", icon: "🔍" },
-  worked_step: { label: "Worked step", color: "#e67e22", icon: "📐" },
-  direct_explanation: { label: "Direct explanation", color: "#b44", icon: "📖" },
-  check_thinking: { label: "Transfer check", color: "#6a5acd", icon: "🧠" },
+  socratic_hint: { label: "Socratic hint", color: "#1bb576", icon: "💭" },
+  explain_error: { label: "Error explanation", color: "#e67e22", icon: "🔍" },
+  worked_step: { label: "Worked step", color: "#553285", icon: "📐" },
+  direct_explanation: { label: "Direct explanation", color: "#d63031", icon: "📖" },
+  check_thinking: { label: "Transfer check", color: "#553285", icon: "🧠" },
 };
 
-const DEMO_LEARNER = "student-02";
+const HINT_STYLES: { label: string; color: string; border: string; bg: string }[] = [
+  { label: "💭 Socratic Hint", color: "#1bb576", border: "#1bb576", bg: "rgba(27,181,118,.06)" },
+  { label: "🔍 Error Explanation", color: "#e67e22", border: "#e67e22", bg: "rgba(230,126,34,.06)" },
+  { label: "📐 Worked Step", color: "#553285", border: "#553285", bg: "rgba(85,50,133,.06)" },
+  { label: "📖 Direct Explanation", color: "#d63031", border: "#d63031", bg: "rgba(214,48,49,.06)" },
+];
+
+const QUICK_OPTIONS = [
+  "Am I on track?",
+  "What should I study today?",
+  "What concept should I learn next?",
+  "Recommend practice questions based on my performance.",
+];
 
 interface ChatMessage {
   role: "tutor" | "learner";
@@ -38,6 +57,7 @@ interface ChatMessage {
 }
 
 export function TutorPage() {
+  const [learnerId, setLearnerId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionSummary[]>([]);
   const [selectedQ, setSelectedQ] = useState<QuestionSummary | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -46,6 +66,7 @@ export function TutorPage() {
   const [loading, setLoading] = useState(false);
   const [questionsLoading, setQuestionsLoading] = useState(true);
   const [solved, setSolved] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchQuestions()
@@ -54,104 +75,168 @@ export function TutorPage() {
         setQuestionsLoading(false);
       })
       .catch(() => setQuestionsLoading(false));
+
+    fetchDemoLearner()
+      .then((demo) => {
+        setLearnerId(demo.learner_id);
+      })
+      .catch(() => {
+        setLearnerId("student-02");
+      });
   }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
 
   const handleSelectQuestion = useCallback((q: QuestionSummary) => {
     setSelectedQ(q);
     setAttempt(0);
-    setChatHistory([]);
+    setChatHistory([
+      {
+        role: "tutor",
+        content: `Hi there! How can I help you with "${q.prompt}"?`,
+        mode: "socratic_hint",
+      },
+    ]);
     setAnswer("");
     setSolved(false);
   }, []);
 
-  const handleAction = useCallback(async (forcedAnswer?: string, hintAttempt?: number) => {
-    if (!selectedQ || loading) return;
-    setLoading(true);
+  const handleAction = useCallback(
+    async (forcedAnswer?: string, hintAttempt?: number) => {
+      if (!selectedQ || loading || !learnerId) return;
+      setLoading(true);
 
-    const isHint = hintAttempt !== undefined;
-    const submissionAnswer = isHint ? "" : (forcedAnswer !== undefined ? forcedAnswer : answer);
+      const isHint = hintAttempt !== undefined;
+      const submissionAnswer = isHint
+        ? ""
+        : forcedAnswer !== undefined
+          ? forcedAnswer
+          : answer;
 
-    if (!isHint && !submissionAnswer.trim()) {
-      setLoading(false);
-      return;
-    }
+      if (!isHint && !submissionAnswer.trim()) {
+        setLoading(false);
+        return;
+      }
 
-    // Add learner message to chat
-    const hintLabels = ["Socratic Hint", "Error Explanation", "Worked Step", "Direct Explanation"];
-    const learnerMsg = isHint 
-      ? `Asked for ${hintLabels[hintAttempt] || "Hint"}` 
-      : `Submitted answer: ${submissionAnswer}`;
-      
-    setChatHistory((prev) => [...prev, { role: "learner", content: learnerMsg }]);
+      const hintLabels = ["Socratic Hint", "Error Explanation", "Worked Step", "Direct Explanation"];
+      const learnerMsg = isHint
+        ? `Asked for ${hintLabels[hintAttempt] || "Hint"}`
+        : submissionAnswer;
 
-    try {
-      const resp: TutorResponse = await postTutorRespond({
-        learner_id: DEMO_LEARNER,
-        question_id: selectedQ.id,
-        attempt_number: isHint ? hintAttempt : attempt,
-        learner_answer: submissionAnswer || undefined,
-      });
+      setChatHistory((prev) => [...prev, { role: "learner", content: learnerMsg }]);
 
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: "tutor",
-          content: resp.message,
-          mode: resp.response_mode,
-          isFallback: resp.is_fallback,
-          confidence: resp.confidence,
-        },
-      ]);
+      try {
+        const resp: TutorResponse = await postTutorRespond({
+          learner_id: learnerId,
+          question_id: selectedQ.id,
+          attempt_number: isHint ? hintAttempt : attempt,
+          learner_answer: submissionAnswer || undefined,
+        });
 
-      if (resp.is_correct) {
-        setSolved(true);
         setChatHistory((prev) => [
           ...prev,
-          { role: "tutor", content: "🎉 Correct answer! You have successfully mastered this question.", mode: "check_thinking" }
+          {
+            role: "tutor",
+            content: resp.message,
+            mode: resp.response_mode,
+            isFallback: resp.is_fallback,
+            confidence: resp.confidence,
+          },
         ]);
-      } else {
-        if (!isHint) {
-          // Incorrect answer automatically advances hint level
-          setAttempt((a) => Math.min(a + 1, 3));
+
+        if (resp.is_correct) {
+          setSolved(true);
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              role: "tutor",
+              content: "🎉 Correct! You've mastered this question. Great job!",
+              mode: "check_thinking",
+            },
+          ]);
         } else {
-          // Direct hint button updates active hint level
-          setAttempt(Math.min(hintAttempt + 1, 3));
+          if (!isHint) {
+            setAttempt((a) => Math.min(a + 1, 3));
+          } else {
+            setAttempt(Math.min(hintAttempt + 1, 3));
+          }
         }
+        setAnswer("");
+      } catch {
+        setChatHistory((prev) => [
+          ...prev,
+          { role: "tutor", content: "Something went wrong. Please try again.", mode: "error" },
+        ]);
       }
-      setAnswer("");
-    } catch {
-      setChatHistory((prev) => [
-        ...prev,
-        { role: "tutor", content: "Something went wrong. Please try again.", mode: "error" },
-      ]);
-    }
-    setLoading(false);
-  }, [selectedQ, attempt, answer, loading]);
+      setLoading(false);
+    },
+    [selectedQ, attempt, answer, loading],
+  );
 
   return (
-    <PageTransition className="dashboard-page">
-      <p className="eyebrow">Doubt tutor</p>
-      <h1>Ask for a&nbsp;hint, not just an&nbsp;answer</h1>
-      <p className="page-copy">
-        The tutor gives guided, curriculum-grounded responses that escalate from
-        a Socratic question to a full explanation — only when you need it.
-      </p>
+    <PageTransition className="dashboard-page mg-page">
+      {/* Breadcrumb */}
+      <div className="mg-breadcrumb">
+        <a href="/learn">Home</a>
+        <span>›</span>
+        <span>PRISM AI Tutor</span>
+      </div>
 
-      {/* Question selector */}
+      {/* AI Tutor featured card (Magoosh-style) */}
+      {!selectedQ && (
+        <div className="mg-featured-card" style={{ marginBottom: "2rem" }}>
+          <div className="mg-featured-icon">🎓</div>
+          <div className="mg-featured-body">
+            <span className="mg-pill mg-pill--purple" style={{ marginBottom: ".5rem" }}>
+              PRISM AI Tutor
+            </span>
+            <h2 style={{
+              margin: ".5rem 0 .4rem",
+              fontSize: "1.2rem",
+              fontWeight: 700,
+              color: "#2d3436",
+              fontFamily: '"Inter", sans-serif',
+            }}>
+              Get Personalized Guidance And Never Get Stuck
+            </h2>
+            <p style={{
+              margin: 0, color: "#636e72", fontSize: ".9rem",
+              lineHeight: 1.6, fontFamily: '"Inter", sans-serif',
+            }}>
+              "Am I on track?"<br />
+              "What lessons should I study next?"<br />
+              "Recommend practice questions based on my performance."
+            </p>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginTop: ".8rem" }}>
+              <span style={{
+                color: "#553285", fontWeight: 700, fontSize: ".9rem",
+                fontFamily: '"Inter", sans-serif', cursor: "pointer",
+                textDecoration: "underline",
+              }}>
+                Select a question below to launch ↓
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Question selector / Chat interface */}
       {!selectedQ ? (
-        <section style={{ marginTop: "2rem" }} aria-label="Select a question">
-          <h2 style={{ fontSize: "1rem", color: "#17392c", margin: "0 0 1rem" }}>
+        <section aria-label="Select a question">
+          <h2 className="mg-section-title">
             Choose a question to work on
           </h2>
           {questionsLoading ? (
-            <p style={{ color: "#6a8478" }}>Loading questions…</p>
+            <p style={{ color: "#636e72" }}>Loading questions…</p>
           ) : (
-            <div className="placeholder-grid">
-              {questions.map((q) => (
-                <article
+            <div className="mg-lesson-list">
+              {questions.map((q, idx) => (
+                <div
                   key={q.id}
+                  className="mg-lesson-item"
                   onClick={() => handleSelectQuestion(q)}
-                  style={{ cursor: "pointer" }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -161,77 +246,66 @@ export function TutorPage() {
                     }
                   }}
                 >
-                  <span style={{ color: "#4d8b72", font: '500 .7rem "DM Mono", monospace' }}>
-                    {CONCEPT_NAMES[q.concept_id] || q.concept_id} · difficulty {(q.difficulty * 100).toFixed(0)}%
-                  </span>
-                  <h2 style={{ margin: ".6rem 0 0", fontSize: "1rem", color: "#17392c" }}>
-                    {q.prompt}
-                  </h2>
-                </article>
+                  <div className="mg-lesson-check">✓</div>
+                  <div>
+                    <div className="mg-lesson-badge">
+                      {CONCEPT_NAMES[q.concept_id] || q.concept_id} · difficulty{" "}
+                      {(q.difficulty * 100).toFixed(0)}%
+                    </div>
+                    <div className="mg-lesson-title">{q.prompt}</div>
+                  </div>
+                  <span className="mg-lesson-meta">Q{idx + 1}</span>
+                </div>
               ))}
             </div>
           )}
         </section>
       ) : (
-        <>
-          {/* Active question */}
-          <section style={{ marginTop: "2rem" }}>
+        /* Active question — two column layout with chat widget */
+        <div className="mg-chat-container">
+          {/* Left: question details + hints */}
+          <div>
             <button
+              className="mg-btn"
               onClick={() => {
                 setSelectedQ(null);
                 setAttempt(0);
                 setChatHistory([]);
+                setSolved(false);
               }}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#397a63",
-                cursor: "pointer",
-                font: '500 .78rem "DM Mono", monospace',
-                padding: 0,
-                marginBottom: ".8rem",
-              }}
+              style={{ marginBottom: "1rem" }}
             >
               ← Back to questions
             </button>
 
-            <div style={{
-              padding: "1.2rem 1.5rem",
-              borderRadius: "1rem",
-              background: "linear-gradient(135deg, #f9fdf9, #e5f6ec)",
-              border: "1px solid rgba(21,51,40,0.1)",
-              marginBottom: "1.5rem",
-            }}>
-              <span style={{ color: "#4d8b72", font: '500 .7rem "DM Mono", monospace' }}>
+            {/* Question card */}
+            <div className="mg-card" style={{ marginBottom: "1rem" }}>
+              <span className="mg-pill mg-pill--purple" style={{ marginBottom: ".4rem" }}>
                 {CONCEPT_NAMES[selectedQ.concept_id] || selectedQ.concept_id}
               </span>
-              <h2 style={{ margin: ".4rem 0 0", fontSize: "1.2rem", color: "#17392c" }}>
+              <h2 style={{
+                margin: ".5rem 0 .6rem",
+                fontSize: "1.15rem",
+                fontWeight: 700,
+                color: "#2d3436",
+                fontFamily: '"Inter", sans-serif',
+              }}>
                 {selectedQ.prompt}
               </h2>
 
-              {/* Escalation ladder indicator */}
-              <div style={{
-                display: "flex",
-                gap: ".4rem",
-                marginTop: ".8rem",
-                flexWrap: "wrap",
-              }}>
+              {/* Escalation ladder */}
+              <div style={{ display: "flex", gap: ".3rem", flexWrap: "wrap" }}>
                 {Object.entries(MODE_DISPLAY).map(([mode, info]) => {
                   const isActive = chatHistory.some((m) => m.mode === mode);
                   return (
                     <span
                       key={mode}
+                      className={`mg-pill ${isActive ? "" : ""}`}
                       style={{
-                        padding: ".2rem .5rem",
-                        borderRadius: ".35rem",
+                        borderColor: isActive ? info.color : "#e8e8e8",
+                        color: isActive ? info.color : "#b2bec3",
+                        background: isActive ? `${info.color}10` : "transparent",
                         fontSize: ".68rem",
-                        fontWeight: 600,
-                        background: isActive
-                          ? `${info.color}18`
-                          : "rgba(0,0,0,0.04)",
-                        color: isActive ? info.color : "#aaa",
-                        border: `1px solid ${isActive ? info.color + "30" : "transparent"}`,
-                        transition: "all .2s ease",
                       }}
                     >
                       {info.icon} {info.label}
@@ -240,263 +314,170 @@ export function TutorPage() {
                 })}
               </div>
             </div>
-          </section>
 
-          {/* Chat history */}
-          <section
-            style={{
-              display: "grid",
-              gap: ".6rem",
-              maxHeight: "400px",
-              overflowY: "auto",
-              marginBottom: "1rem",
-              padding: ".5rem 0",
-            }}
-            aria-label="Tutor conversation"
-          >
-            {chatHistory.map((msg, idx) => {
-              const modeInfo = msg.mode ? MODE_DISPLAY[msg.mode] : null;
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    padding: ".8rem 1rem",
-                    borderRadius: ".8rem",
-                    background: msg.role === "tutor" ? "#fff" : "linear-gradient(135deg, #e0f4e7, #d0f5e4)",
-                    border: msg.role === "tutor"
-                      ? "1px solid rgba(21,51,40,0.09)"
-                      : "1px solid rgba(26,92,63,0.15)",
-                    boxShadow: msg.role === "tutor"
-                      ? "0 6px 20px rgba(21,51,40,0.05)"
-                      : "none",
-                    maxWidth: msg.role === "learner" ? "75%" : "100%",
-                    marginLeft: msg.role === "learner" ? "auto" : 0,
+            {/* Hint buttons */}
+            {!solved && (
+              <div className="mg-hint-row">
+                {HINT_STYLES.map((hint, idx) => (
+                  <button
+                    key={idx}
+                    className="mg-hint-btn"
+                    onClick={() => handleAction(undefined, idx)}
+                    disabled={loading || attempt < idx}
+                    style={{
+                      borderColor: hint.border,
+                      color: hint.color,
+                      background: attempt === idx ? hint.bg : "#fff",
+                    }}
+                  >
+                    {hint.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {solved && (
+              <div className="mg-card" style={{
+                textAlign: "center",
+                background: "rgba(27, 181, 118, 0.06)",
+                border: "1px solid rgba(27, 181, 118, 0.2)",
+              }}>
+                <p style={{ margin: 0, color: "#158f5e", fontSize: ".95rem", fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+                  ✅ Question resolved!
+                </p>
+                <button
+                  className="mg-btn mg-btn--primary"
+                  style={{ marginTop: ".8rem" }}
+                  onClick={() => {
+                    setSelectedQ(null);
+                    setAttempt(0);
+                    setChatHistory([]);
+                    setSolved(false);
                   }}
                 >
-                  {msg.role === "tutor" && modeInfo && (
+                  Select another question
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Chat widget */}
+          <div className="mg-chat-widget">
+            <div className="mg-chat-header">
+              <span style={{
+                width: 24, height: 24, borderRadius: "50%",
+                background: "linear-gradient(135deg, #1bb576, #553285)",
+                display: "inline-grid", placeItems: "center",
+                color: "#fff", fontSize: ".65rem",
+              }}>🎓</span>
+              <span className="mg-pill mg-pill--green" style={{ fontSize: ".65rem", padding: ".15rem .5rem" }}>
+                PRISM Tutor
+              </span>
+              <span style={{ marginLeft: "auto", fontSize: ".75rem", color: "#636e72" }}>
+                Viewing: {CONCEPT_NAMES[selectedQ.concept_id]?.split(" ")[0] || "Question"}
+              </span>
+            </div>
+
+            <div className="mg-chat-body">
+              {chatHistory.length === 0 && (
+                <>
+                  <div style={{ textAlign: "center", padding: "1rem 0" }}>
                     <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: ".4rem",
-                      marginBottom: ".3rem",
-                    }}>
-                      <span style={{
-                        fontSize: ".7rem",
-                        fontWeight: 600,
-                        color: modeInfo.color,
-                        background: `${modeInfo.color}12`,
-                        padding: ".15rem .4rem",
-                        borderRadius: ".3rem",
-                      }}>
-                        {modeInfo.icon} {modeInfo.label}
-                      </span>
-                      {msg.isFallback && (
-                        <span style={{
-                          fontSize: ".65rem",
-                          color: "#888",
-                          background: "rgba(0,0,0,0.04)",
-                          padding: ".1rem .3rem",
-                          borderRadius: ".2rem",
-                        }}>
-                          authored fallback
-                        </span>
-                      )}
-                      {msg.confidence && (
-                        <span style={{
-                          fontSize: ".65rem",
-                          color: "#6a8478",
-                          font: '.65rem "DM Mono", monospace',
-                        }}>
-                          confidence: {msg.confidence}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <p style={{
-                    margin: 0,
-                    color: msg.role === "tutor" ? "#17392c" : "#1a5c3f",
-                    fontSize: ".9rem",
-                    lineHeight: 1.55,
-                  }}>
-                    {msg.content}
+                      width: 40, height: 40, borderRadius: "50%",
+                      background: "linear-gradient(135deg, #1bb576, #553285)",
+                      display: "inline-grid", placeItems: "center",
+                      color: "#fff", fontSize: "1rem", marginBottom: ".5rem",
+                    }}>🎓</div>
+                    <p style={{ color: "#1bb576", fontSize: ".75rem", fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
+                      ✓ in a few seconds
+                    </p>
+                  </div>
+                  <p style={{ textAlign: "center", fontWeight: 700, color: "#2d3436", fontFamily: '"Inter", sans-serif' }}>
+                    Hi there! How can I help?
                   </p>
-                </div>
-              );
-            })}
-          </section>
+                  <p style={{ textAlign: "center", color: "#1bb576", fontSize: ".82rem", fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
+                    Select an option or ask away below
+                  </p>
+                  <div className="mg-quick-options">
+                    {QUICK_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        className="mg-quick-option"
+                        onClick={() => handleAction(opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
-          {/* Hint options (clickable buttons) */}
-          {!solved && (
-            <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: ".4rem",
-              marginBottom: "1rem",
-            }}>
-              <button
-                onClick={() => handleAction(undefined, 0)}
-                disabled={loading}
-                style={{
-                  border: "1px solid #4d8b72",
-                  borderRadius: ".5rem",
-                  padding: ".4rem .8rem",
-                  background: attempt === 0 ? "#eef6f3" : "#fff",
-                  color: "#31644e",
-                  fontSize: ".78rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                💭 Socratic Hint
-              </button>
-              <button
-                onClick={() => handleAction(undefined, 1)}
-                disabled={loading || attempt < 1}
-                style={{
-                  border: "1px solid #c5a600",
-                  borderRadius: ".5rem",
-                  padding: ".4rem .8rem",
-                  background: attempt === 1 ? "#fffbea" : "#fff",
-                  color: "#8a7400",
-                  fontSize: ".78rem",
-                  fontWeight: 600,
-                  cursor: attempt < 1 ? "not-allowed" : "pointer",
-                  opacity: attempt < 1 ? 0.5 : 1,
-                }}
-              >
-                🔍 Error Explanation
-              </button>
-              <button
-                onClick={() => handleAction(undefined, 2)}
-                disabled={loading || attempt < 2}
-                style={{
-                  border: "1px solid #e67e22",
-                  borderRadius: ".5rem",
-                  padding: ".4rem .8rem",
-                  background: attempt === 2 ? "#fdf5ee" : "#fff",
-                  color: "#ba5a0d",
-                  fontSize: ".78rem",
-                  fontWeight: 600,
-                  cursor: attempt < 2 ? "not-allowed" : "pointer",
-                  opacity: attempt < 2 ? 0.5 : 1,
-                }}
-              >
-                📐 Worked Step
-              </button>
-              <button
-                onClick={() => handleAction(undefined, 3)}
-                disabled={loading || attempt < 3}
-                style={{
-                  border: "1px solid #b44",
-                  borderRadius: ".5rem",
-                  padding: ".4rem .8rem",
-                  background: attempt === 3 ? "#fdeded" : "#fff",
-                  color: "#8e2b2b",
-                  fontSize: ".78rem",
-                  fontWeight: 600,
-                  cursor: attempt < 3 ? "not-allowed" : "pointer",
-                  opacity: attempt < 3 ? 0.5 : 1,
-                }}
-              >
-                📖 Direct Explanation
-              </button>
+              {chatHistory.map((msg, idx) => {
+                const modeInfo = msg.mode ? MODE_DISPLAY[msg.mode] : null;
+                return (
+                  <div key={idx}>
+                    {msg.role === "tutor" && modeInfo && (
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: ".3rem",
+                        marginBottom: ".2rem",
+                      }}>
+                        <span style={{
+                          fontSize: ".65rem", fontWeight: 600,
+                          color: modeInfo.color,
+                          fontFamily: '"Inter", sans-serif',
+                        }}>
+                          {modeInfo.icon} {modeInfo.label}
+                        </span>
+                        {msg.isFallback && (
+                          <span style={{
+                            fontSize: ".6rem", color: "#b2bec3",
+                            background: "rgba(0,0,0,0.04)",
+                            padding: ".1rem .3rem", borderRadius: ".2rem",
+                          }}>
+                            fallback
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className={`mg-chat-bubble ${msg.role === "tutor" ? "mg-chat-bubble--tutor" : "mg-chat-bubble--learner"}`}>
+                      {msg.content}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
             </div>
-          )}
 
-          {/* Input area */}
-          {!solved && (
-            <div style={{
-              display: "flex",
-              gap: ".6rem",
-              padding: ".8rem",
-              borderRadius: ".8rem",
-              background: "#fff",
-              border: "1px solid rgba(21,51,40,0.1)",
-              boxShadow: "0 10px 30px rgba(21,51,40,0.06)",
-            }}>
-              <input
-                type="text"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAction();
-                  }
-                }}
-                placeholder="Type your answer and press Enter..."
-                style={{
-                  flex: 1,
-                  border: "none",
-                  outline: "none",
-                  padding: ".5rem .7rem",
-                  fontSize: ".9rem",
-                  fontFamily: "inherit",
-                  borderRadius: ".5rem",
-                  background: "rgba(21,51,40,0.03)",
-                  color: "#17392c",
-                }}
-                disabled={loading}
-                id="tutor-answer-input"
-              />
-              <button
-                onClick={() => handleAction()}
-                disabled={loading}
-                style={{
-                  border: "none",
-                  borderRadius: ".6rem",
-                  padding: ".5rem 1.2rem",
-                  background: "linear-gradient(135deg, #4d8b72, #3a7a5f)",
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: ".85rem",
-                  cursor: loading ? "wait" : "pointer",
-                  opacity: loading ? 0.6 : 1,
-                  transition: "opacity .2s ease",
-                }}
-                id="tutor-submit-btn"
-              >
-                Submit Answer
-              </button>
-            </div>
-          )}
-
-          {solved && (
-            <div style={{
-              marginTop: "1.5rem",
-              padding: "1rem",
-              borderRadius: "0.8rem",
-              backgroundColor: "#f5fdf8",
-              border: "1px solid #c2eed5",
-              textAlign: "center",
-            }}>
-              <p style={{ margin: 0, color: "#1e6b3f", fontSize: "0.95rem", fontWeight: 600 }}>
-                Question resolved!
-              </p>
-              <button
-                onClick={() => {
-                  setSelectedQ(null);
-                  setAttempt(0);
-                  setChatHistory([]);
-                  setSolved(false);
-                }}
-                style={{
-                  marginTop: "0.8rem",
-                  border: "none",
-                  borderRadius: ".5rem",
-                  padding: ".4rem 1rem",
-                  background: "#267a4e",
-                  color: "#fff",
-                  fontWeight: 600,
-                  fontSize: ".8rem",
-                  cursor: "pointer",
-                }}
-              >
-                Select another question
-              </button>
-            </div>
-          )}
-        </>
+            {/* Input */}
+            {!solved && (
+              <div className="mg-chat-input-row">
+                <input
+                  type="text"
+                  className="mg-chat-input"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAction();
+                    }
+                  }}
+                  placeholder="Ask away..."
+                  disabled={loading}
+                  id="tutor-answer-input"
+                />
+                <button
+                  className="mg-chat-send"
+                  onClick={() => handleAction()}
+                  disabled={loading}
+                  id="tutor-submit-btn"
+                >
+                  ➤
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </PageTransition>
   );

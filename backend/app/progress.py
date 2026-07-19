@@ -64,7 +64,7 @@ def get_learner_progress(learner_id: str) -> dict:
             )
             rows = cur.fetchall()
             if not rows:
-                raise HTTPException(status_code=404, detail="Learner not found")
+                return {"learner_id": learner_id, "concepts": []}
             concepts = []
             for row in rows:
                 band_info = _band_for_p_know(
