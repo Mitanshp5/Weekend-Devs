@@ -101,3 +101,65 @@ def test_tutor_lists_available_questions(monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["questions"]) >= 5
+
+
+# -- Answer validation and hint requests tests --
+
+def test_tutor_respond_correct_answer(monkeypatch):
+    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+    # Question q.eq.03 expected is "7"
+    resp = request(
+        "post",
+        "/api/tutor/respond",
+        json={
+            "learner_id": "test-student-99",
+            "question_id": "q.eq.03",
+            "attempt_number": 0,
+            "learner_answer": "7",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["response_mode"] == "check_thinking"
+    assert body["is_correct"] is True
+    assert body["next_action"] == "show_transfer_question"
+
+
+def test_tutor_respond_incorrect_answer(monkeypatch):
+    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+    # Question q.eq.03 expected is "7". Throwing in "-7" mapping to eq.sign_not_transferred
+    resp = request(
+        "post",
+        "/api/tutor/respond",
+        json={
+            "learner_id": "test-student-99",
+            "question_id": "q.eq.03",
+            "attempt_number": 0,
+            "learner_answer": "-7",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["response_mode"] == "explain_error"  # escalates to climb level 1
+    assert body["is_correct"] is False
+    assert body["error_tag"] == "eq.sign_not_transferred"
+
+
+def test_tutor_respond_direct_hint_request(monkeypatch):
+    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+    # No learner_answer provided
+    resp = request(
+        "post",
+        "/api/tutor/respond",
+        json={
+            "learner_id": "test-student-99",
+            "question_id": "q.eq.03",
+            "attempt_number": 2,
+            "learner_answer": "",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["response_mode"] == "worked_step"
+    assert body["is_correct"] is False
+

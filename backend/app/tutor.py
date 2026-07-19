@@ -15,8 +15,20 @@ from pydantic import BaseModel
 
 from app.database import connect
 from app.person3_models import initialize_person3_tables
+from app.scoring import score_numeric_answer
+from app.mastery import update_mastery
 
 router = APIRouter(prefix="/api/tutor", tags=["tutor"])
+
+# Add friendly concept map for easy reference
+FRIENDLY_CONCEPTS = {
+    "num.signed_operations": "Integer Operations (Signed Numbers)",
+    "eq.inverse_operations": "Basic Equations (Inverse Operations)",
+    "eq.multi_step": "Multi-Step Equations",
+    "eq.word_translation": "Word Problems (Equation Translation)",
+    "num.mul_div_fluency": "Multiplication & Division Fluency",
+}
+
 
 
 # ---------------------------------------------------------------------------
@@ -253,18 +265,227 @@ def get_fallback(question_id: str, attempt: int = 0, error_tag: str | None = Non
 def tutor_respond(req: TutorRequest) -> dict:
     """Full tutor response — uses deterministic fallback.
 
-    In a production system, this would try the LLM first and fall back
-    to authored content on failure.  For the prototype, the deterministic
-    path is the primary path (non-negotiable #2).
+    Scores learners' answers, updates BKT mastery parameters,
+    and returns correct feedback or advances the Socratic escalations.
     """
     question = QUESTION_BANK.get(req.question_id)
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    response = _fallback_response(question, req.attempt_number, req.error_tag)
-
-    # Persist the tutor session
     initialize_person3_tables()
+    concept_id = question["concept_id"]
+
+    # 1. Retrieve current mastery/p_know
+    prior_p_know = 0.15
+    prior_evidence = 0
+    prior_indep = 0
+    prior_errors = []
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p_know, evidence_count, independent_correct_count, recent_error_tags
+                FROM mastery_history
+                WHERE learner_id = %s AND concept_id = %s
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+                """,
+                (req.learner_id, concept_id),
+            )
+            row = cur.fetchone()
+            if row:
+                prior_p_know = row["p_know"]
+                prior_evidence = row["evidence_count"]
+                prior_indep = row["independent_correct_count"]
+                prior_errors = row["recent_error_tags"] or []
+
+    # 2. Check if this is a direct hint request (no answer submitted)
+    is_hint_request = not req.learner_answer or not req.learner_answer.strip()
+
+    if is_hint_request:
+        response = _fallback_response(question, req.attempt_number, None)
+        response["is_correct"] = False
+        response["error_tag"] = None
+        response["hint_used"] = True
+        response["p_know"] = prior_p_know
+
+        # Log tutor session and record that hint was used
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO tutor_sessions
+                        (learner_id, question_id, attempt_number, response_mode,
+                         message, concept_ids, citation_ids, confidence,
+                         next_action, is_fallback)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        req.learner_id,
+                        req.question_id,
+                        req.attempt_number,
+                        response["response_mode"],
+                        response["message"],
+                        response["concept_ids"],
+                        response["citation_ids"],
+                        response["confidence"],
+                        response["next_action"],
+                        response["is_fallback"],
+                    ),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO mastery_history
+                        (learner_id, concept_id, p_know, evidence_count,
+                         independent_correct_count, recent_error_tags, uncertainty, hint_used)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, true)
+                    """,
+                    (
+                        req.learner_id,
+                        concept_id,
+                        prior_p_know,
+                        prior_evidence,
+                        prior_indep,
+                        prior_errors,
+                        "medium",
+                    ),
+                )
+        return response
+
+    # 3. Score submitted answer
+    rubric_map = {item["pattern"]: item["error_tag"] for item in question.get("rubric", [])}
+    score_res = score_numeric_answer(req.learner_answer, question["expected_answer"], rubric_map)
+    is_correct = score_res.is_correct
+    error_tag = score_res.error_tag
+
+    # 4. Calculate new Bayesian Knowledge Tracing (BKT) mastery score
+    new_p_know = update_mastery(prior_p_know, is_correct)
+
+    # 5. Independent vs. Hint-assisted correct update
+    new_indep = prior_indep
+    if is_correct and req.attempt_number == 0:
+        new_indep += 1
+
+    new_evidence = prior_evidence + 1
+    new_errors = list(prior_errors)
+    if not is_correct and error_tag and (error_tag not in new_errors):
+        new_errors.append(error_tag)
+
+    # 6. Insert new mastery history entry and update teacher summaries
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO mastery_history
+                    (learner_id, concept_id, p_know, evidence_count,
+                     independent_correct_count, recent_error_tags, uncertainty, hint_used)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    req.learner_id,
+                    concept_id,
+                    new_p_know,
+                    new_evidence,
+                    new_indep,
+                    new_errors,
+                    "low" if new_p_know >= 0.70 else "medium",
+                    req.attempt_number > 0,
+                ),
+            )
+
+            # Update teacher summary
+            if new_p_know >= 0.70 and new_indep >= 3:
+                band = "ready_for_extension"
+            elif new_p_know >= 0.40:
+                band = "developing"
+            else:
+                band = "needs_prerequisite_support"
+
+            cur.execute(
+                """
+                SELECT id, grade, likely_blocker_concept, blocker_confidence
+                FROM teacher_summaries
+                WHERE learner_id = %s
+                """,
+                (req.learner_id,),
+            )
+            sum_row = cur.fetchone()
+
+            likely_blocker = sum_row["likely_blocker_concept"] if sum_row else None
+            blocker_conf = sum_row["blocker_confidence"] if sum_row else None
+            if not is_correct and new_p_know < 0.40:
+                likely_blocker = concept_id
+                blocker_conf = round(1.0 - new_p_know, 2)
+            elif is_correct and likely_blocker == concept_id:
+                likely_blocker = None
+                blocker_conf = None
+
+            if sum_row:
+                cur.execute(
+                    """
+                    UPDATE teacher_summaries
+                    SET band = %s,
+                        current_target_concept = %s,
+                        likely_blocker_concept = %s,
+                        blocker_confidence = %s,
+                        evidence_summary = %s,
+                        recommended_action = %s,
+                        updated_at = now()
+                    WHERE id = %s
+                    """,
+                    (
+                        band,
+                        concept_id,
+                        likely_blocker,
+                        blocker_conf,
+                        f"{new_evidence} attempts on {concept_id}",
+                        "Needs direct intervention" if band == "needs_prerequisite_support" else "Keep learning",
+                        sum_row["id"],
+                    ),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO teacher_summaries
+                        (learner_id, grade, band, current_path, current_target_concept,
+                         likely_blocker_concept, blocker_confidence, evidence_summary,
+                         recommended_action, pending_sync_count)
+                    VALUES (%s, 8, %s, 'Grade-Level', %s, %s, %s, %s, %s, 0)
+                    """,
+                    (
+                        req.learner_id,
+                        band,
+                        concept_id,
+                        likely_blocker,
+                        blocker_conf,
+                        f"{new_evidence} attempts on {concept_id}",
+                        "Needs direct intervention" if band == "needs_prerequisite_support" else "Keep learning",
+                    ),
+                )
+
+    # 7. Formulate response
+    if is_correct:
+        response = {
+            "response_mode": "check_thinking",
+            "message": question["feedback"].get("correct", "Correct! Excellent work."),
+            "concept_ids": [concept_id],
+            "citation_ids": [question["id"]],
+            "confidence": "high",
+            "next_action": "show_transfer_question",
+            "safety_flags": [],
+            "is_fallback": True,
+            "is_correct": True,
+            "p_know": new_p_know,
+        }
+    else:
+        # Move up the escalation ladder
+        response = _fallback_response(question, req.attempt_number + 1, error_tag)
+        response["is_correct"] = False
+        response["error_tag"] = error_tag
+        response["p_know"] = new_p_know
+
+    # 8. Log final tutor session for the answer attempt
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
