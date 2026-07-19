@@ -61,6 +61,88 @@ def initialize_database() -> None:
                     description TEXT NOT NULL,
                     position INTEGER NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS tutor_sessions (
+                    id BIGSERIAL PRIMARY KEY,
+                    learner_id TEXT NOT NULL,
+                    question_id TEXT NOT NULL,
+                    attempt_number INTEGER NOT NULL DEFAULT 0,
+                    response_mode TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    concept_ids TEXT[] NOT NULL DEFAULT '{}',
+                    citation_ids TEXT[] NOT NULL DEFAULT '{}',
+                    confidence TEXT NOT NULL DEFAULT 'medium',
+                    next_action TEXT NOT NULL DEFAULT 'await_learner_attempt',
+                    is_fallback BOOLEAN NOT NULL DEFAULT false,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+
+                CREATE TABLE IF NOT EXISTS tutor_questions (
+                    id TEXT PRIMARY KEY,
+                    concept_id TEXT NOT NULL,
+                    prompt TEXT NOT NULL,
+                    answer_type TEXT NOT NULL,
+                    expected_answer TEXT NOT NULL,
+                    difficulty FLOAT NOT NULL,
+                    solution_steps JSONB NOT NULL DEFAULT '[]',
+                    rubric JSONB NOT NULL DEFAULT '[]',
+                    hint_ladder JSONB NOT NULL DEFAULT '[]',
+                    feedback JSONB NOT NULL DEFAULT '{}'
+                );
+
+                CREATE TABLE IF NOT EXISTS mastery_history (
+                    id BIGSERIAL PRIMARY KEY,
+                    learner_id TEXT NOT NULL,
+                    concept_id TEXT NOT NULL,
+                    p_know FLOAT NOT NULL,
+                    evidence_count INTEGER NOT NULL DEFAULT 0,
+                    independent_correct_count INTEGER NOT NULL DEFAULT 0,
+                    recent_error_tags TEXT[] NOT NULL DEFAULT '{}',
+                    uncertainty TEXT NOT NULL DEFAULT 'high',
+                    hint_used BOOLEAN NOT NULL DEFAULT false,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+
+                CREATE TABLE IF NOT EXISTS teacher_summaries (
+                    id BIGSERIAL PRIMARY KEY,
+                    learner_id TEXT NOT NULL,
+                    grade INTEGER NOT NULL,
+                    band TEXT NOT NULL DEFAULT 'developing',
+                    current_path TEXT,
+                    current_target_concept TEXT,
+                    likely_blocker_concept TEXT,
+                    blocker_confidence FLOAT,
+                    evidence_summary TEXT,
+                    recommended_action TEXT,
+                    pending_sync_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+
+                CREATE TABLE IF NOT EXISTS misconception_clusters (
+                    id BIGSERIAL PRIMARY KEY,
+                    grade INTEGER NOT NULL,
+                    error_tag TEXT NOT NULL,
+                    concept_id TEXT NOT NULL,
+                    affected_count INTEGER NOT NULL DEFAULT 0,
+                    total_active INTEGER NOT NULL DEFAULT 0,
+                    recent_incorrect_rate FLOAT NOT NULL DEFAULT 0,
+                    repeat_error_rate FLOAT NOT NULL DEFAULT 0,
+                    trend_growth FLOAT NOT NULL DEFAULT 0,
+                    impact_score FLOAT NOT NULL DEFAULT 0,
+                    suggested_intervention TEXT,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_mastery_history_learner
+                    ON mastery_history (learner_id);
+                CREATE INDEX IF NOT EXISTS idx_mastery_history_concept
+                    ON mastery_history (learner_id, concept_id);
+                CREATE INDEX IF NOT EXISTS idx_tutor_sessions_learner
+                    ON tutor_sessions (learner_id, question_id);
+                CREATE INDEX IF NOT EXISTS idx_teacher_summaries_grade
+                    ON teacher_summaries (grade);
+                CREATE INDEX IF NOT EXISTS idx_clusters_grade
+                    ON misconception_clusters (grade);
                 """
             )
             cursor.executemany(
