@@ -1,153 +1,122 @@
-# PRISM setup guide
+# PRISM Setup & Development Guide
 
-PRISM is designed to be started by one launcher from the repository root. The launcher installs or prepares the local tools, starts PostgreSQL in Docker, installs backend and frontend dependencies, verifies the project, and then starts both development servers.
+This guide details how to install, set up, and run the PRISM STEM-learning prototype workspace on your local machine.
 
-## Configuration rule
+We have split the workspace lifecycle into two phases:
+1. **One-Time Setup (`setup.bat` / `setup.sh`)**: Installs missing dependencies (Python, Node/npm, Docker Desktop), starts PostgreSQL, sets up virtualenv/packages, and verifies compilation by running tests and production builds.
+2. **Daily Development (`run-dev.bat` / `run-dev.sh`)**: Starts the database and launches the dev servers instantly in 2 seconds without running slow tests or builds.
 
-There is one configuration template and one generated configuration file:
+---
 
-```text
-./.env.example  <- tracked template
-./.env          <- local file created by the launcher; never commit it
+## 📋 Prerequisites
+
+Ensure you have the following installed and running:
+* **Docker Desktop**: [Download here](https://www.docker.com/products/docker-desktop/) (must be running for PostgreSQL).
+* **Python 3.11+**: [Download here](https://www.python.org/downloads/) (for the FastAPI backend).
+* **Node.js (LTS)**: [Download here](https://nodejs.org/) (for the React frontend).
+
+The launcher scripts require Docker Compose, which is included by default with Docker Desktop.
+
+---
+
+## 1. Configure the Environment
+
+Run these commands from the repository root:
+
+* **Windows PowerShell**:
+  ```powershell
+  Copy-Item .env.example .env
+  ```
+* **macOS / Linux / WSL / Git Bash**:
+  ```bash
+  cp .env.example .env
+  ```
+
+Open the newly created `.env` file and configure local values (specifically setting `POSTGRES_PASSWORD` and keeping the same password in `PRISM_DATABASE_URL`):
+```env
+POSTGRES_DB=prism
+POSTGRES_USER=prism
+POSTGRES_PASSWORD=your_local_secret_password
+POSTGRES_PORT=5432
+PRISM_DATABASE_URL=postgresql://prism:your_local_secret_password@127.0.0.1:5432/prism
 ```
 
-Do not create `backend/.env`, `frontend/.env`, or any other environment file. The backend and Docker Compose both read the root `.env` file.
+> [!NOTE]
+> This single root `.env` file is automatically read and shared by Docker Compose, the backend API, and the testing suite. Do not commit `.env` to Git.
 
-The launcher creates `.env` automatically from `.env.example` on the first run. The template uses safe local-only PostgreSQL credentials, so no manual edit is required for a normal hackathon setup. If you change the password, update both `POSTGRES_PASSWORD` and the password inside `PRISM_DATABASE_URL`.
+---
 
-## Requirements
+## 2. One-Time Setup & Verification
 
-The launcher can install missing development tools when the operating system supports it, but the computer must have:
+Before running the development servers for the first time, run the setup script from the root folder to install everything and run initial health checks.
 
-- An internet connection.
-- Permission to install software and dependencies.
-- Docker Desktop on Windows or macOS. On Linux, the launcher can install Docker on Debian/Ubuntu systems with `apt` and `sudo`.
+* **Windows (Command Prompt / CMD / PowerShell)**:
+  ```cmd
+  setup.bat
+  ```
+  *(Uses `winget` to automatically install missing tools like Python or Node if they are not in your path.)*
 
-On Windows, the launcher uses `winget` when Docker Desktop, Python, or Node.js is missing. On macOS, it uses Homebrew when those tools are missing. Installation may show a normal operating-system permission or Docker first-run prompt.
+* **macOS / Linux / WSL / Git Bash**:
+  ```bash
+  chmod +x setup.sh
+  ./setup.sh
+  ```
+  *(Uses Homebrew on macOS or `apt` on Debian/Ubuntu systems to install missing dependencies.)*
 
-## Windows: one-file setup
+---
 
-1. Download or clone the repository.
-2. Open the repository folder.
-3. Double-click `run-dev.bat`, or run it from PowerShell:
+## 3. Launch the Development Servers
 
-   ```powershell
-   .\run-dev.bat
-   ```
+Once setup completes successfully, start your dev servers instantly:
 
-The script will:
+* **Windows (Command Prompt / CMD / PowerShell)**:
+  ```cmd
+  run-dev.bat
+  ```
+  *(Launches uvicorn and npm in **two separate, clearly labeled command windows** so you can view both logs side-by-side.)*
 
-1. Create and validate the root `.env` file.
-2. Find Docker Desktop, install it with `winget` if possible, launch it, and wait until the Docker engine is ready.
-3. Find Python 3.11+, installing Python 3.12 with `winget` if possible.
-4. Find Node.js/npm, installing Node.js LTS with `winget` if possible.
-5. Pull the PostgreSQL image and wait for the PostgreSQL container health check to pass.
-6. Create `backend/.venv` and install the backend package plus its development dependencies.
-7. Install frontend dependencies from `frontend/package-lock.json`.
-8. Run backend tests, frontend tests, and the frontend production build.
-9. Open separate command windows for the backend and frontend development servers.
-10. Check the backend health endpoint before reporting that setup is complete.
+* **macOS / Linux / WSL / Git Bash**:
+  ```bash
+  chmod +x run-dev.sh
+  ./run-dev.sh
+  ```
+  *(Runs both servers concurrently in your current terminal session. Press **`Ctrl+C`** to stop them.)*
 
-If Docker Desktop was just installed, it may ask you to accept its terms or enable WSL2/virtualization. Complete that prompt and run `run-dev.bat` again if the first attempt cannot start the engine.
+---
 
-## macOS, Linux, WSL, or Git Bash: one-file setup
+## 🛠️ Accessing the Applications
 
-Run the shell launcher from the repository root:
-
-```bash
-bash ./run-dev.sh
-```
-
-The script performs the same setup, verification, and startup sequence. On macOS it opens Docker Desktop and waits for it to be ready. On Debian/Ubuntu Linux it can install Docker, Python, and Node.js through `apt` when `sudo` is available.
-
-Press `Ctrl+C` to stop both development servers.
-
-## Addresses after startup
+Once the launchers report success, access the services here:
 
 | Service | Address |
-| --- | --- |
-| Frontend | [http://localhost:5173](http://localhost:5173) |
-| Backend API | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
-| API health check | [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) |
-| Interactive API docs | [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) |
+| :--- | :--- |
+| 🌐 **Frontend App** | [http://localhost:5173](http://localhost:5173) |
+| ⚙️ **Backend API** | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
+| 🏥 **Backend Health Check** | [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) |
+| 📘 **Interactive API Docs** | [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) |
 
-The health check should return:
+---
 
-```json
-{"status":"ready"}
-```
+## ❓ Troubleshooting
 
-## Stopping and resetting PostgreSQL
+### 1. Database Connection Failures / Password Mismatches
+If the backend tests or servers fail to connect to PostgreSQL with a password authentication error:
+* Check the `.env` file in the project root and make sure the password in `PRISM_DATABASE_URL` matches the `POSTGRES_PASSWORD` defined in the same file.
+* If you changed the password, restart your Docker container so it uses the updated credentials:
+  ```bash
+  docker compose down -v
+  docker compose up -d postgres
+  ```
 
-Closing the development server windows or pressing `Ctrl+C` stops the API and frontend. PostgreSQL remains available in Docker for the next run.
-
-Stop PostgreSQL while preserving its data:
-
-```bash
-docker compose stop postgres
-```
-
-Reset the local database only when you intentionally want to delete its data volume:
-
-```bash
-docker compose down -v
-```
-
-The next launcher run will download/start PostgreSQL and recreate the database schema.
-
-## What not to do
-
-- Do not create another `.env` file inside `backend` or `frontend`.
-- Do not commit `.env`; it contains machine-local configuration.
-- Do not delete `frontend/package-lock.json`; the launcher uses it for reproducible installs.
-- Do not run `npm install` from the repository root. Frontend commands belong in `frontend`.
-- Do not run backend commands from the repository root unless the command explicitly points to `backend/.venv`.
-- Do not use `docker compose down -v` unless deleting the local PostgreSQL data is intentional.
-- Do not start a second copy of the launcher while the existing backend/frontend windows are running.
-
-## Troubleshooting
-
-### Docker does not become ready
-
-Open Docker Desktop directly and complete any first-run setup, WSL2 installation, virtualization prompt, or terms-of-service prompt. Then run the launcher again. To inspect Docker from a terminal:
-
-```bash
-docker info
-docker compose ps
-docker compose logs --tail=40 postgres
-```
-
-If Docker Desktop is not installed and the launcher cannot install it automatically, install Docker Desktop manually and rerun the launcher. The project cannot run PostgreSQL without a working Docker engine.
-
-### Port 5432, 8000, or 5173 is already in use
-
-Stop the application using the port, or change `POSTGRES_PORT` in the root `.env`. The frontend and backend ports are currently defined by their development commands and should normally be left at `5173` and `8000`.
-
-### PostgreSQL password authentication fails
-
-Check that the password in `POSTGRES_PASSWORD` matches the password in `PRISM_DATABASE_URL`. If the credentials were changed after PostgreSQL was first created, reset the local volume and start again:
-
-```bash
-docker compose down -v
-docker compose up -d --wait postgres
-```
-
-This deletes the local PostgreSQL data volume.
-
-### A dependency install fails
-
-Check the internet connection and rerun the same launcher. It is safe to rerun; it reuses the existing virtual environment and reinstalls the declared dependencies. If frontend files are corrupted, close all frontend server windows and remove only `frontend/node_modules`; do not remove `package-lock.json`:
-
-PowerShell:
-
-```powershell
-Remove-Item -Recurse -Force frontend\node_modules
-.\run-dev.bat
-```
-
-macOS/Linux/WSL/Git Bash:
-
-```bash
-rm -rf frontend/node_modules
-bash ./run-dev.sh
-```
+### 2. npm Errors / Corrupted `node_modules`
+If you see errors such as `Cannot find module .../npm-prefix.js` or `npm-cli.js`:
+1. Clean up and delete any corrupted dependency files:
+   * **Windows (PowerShell)**:
+     ```powershell
+     Remove-Item -Recurse -Force frontend\node_modules
+     ```
+   * **macOS / Linux**:
+     ```bash
+     rm -rf frontend/node_modules
+     ```
+2. Re-run your corresponding launcher setup (`setup.bat` or `./setup.sh`), which will automatically reinstall the packages cleanly.

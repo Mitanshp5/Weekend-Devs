@@ -7,37 +7,31 @@ cd "$ROOT_DIR"
 log() { printf '\n[%s] %s\n' "$1" "$2"; }
 die() { printf '\n[ERROR] %s\n' "$1" >&2; exit 1; }
 
-ensure_env() {
-  if [[ ! -f .env ]]; then
-    [[ -f .env.example ]] || die ".env.example is missing from the repository root."
-    log "1/7" "Creating the root .env file from .env.example..."
-    cp .env.example .env
-  fi
-  local key
-  for key in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_PORT PRISM_DATABASE_URL; do
-    grep -q "^${key}=" .env || die ".env is missing ${key}. Restore it from .env.example and try again."
-  done
-}
+# 1. Verify and source environment
+if [[ ! -f .env ]]; then
+  die "The root .env file is missing. Please run ./setup.sh first!"
+fi
 
-install_brew_package() {
-  command -v brew >/dev/null 2>&1 || die "Homebrew is required to install $1. Install Homebrew, then run this file again."
-  brew install "$1"
-}
+# Load variables
+set -a
+source .env
+set +a
 
-ensure_docker() {
-  log "2/7" "Checking Docker Desktop..."
-  if ! command -v docker >/dev/null 2>&1; then
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-      command -v brew >/dev/null 2>&1 || die "Docker is missing. Install Docker Desktop or Homebrew, then run this file again."
-      brew install --cask docker
-    elif command -v apt-get >/dev/null 2>&1; then
-      sudo apt-get update
-      sudo apt-get install -y docker.io docker-compose-plugin
-    else
-      die "Docker is missing and this operating system has no supported package manager. Install Docker Desktop, then run this file again."
-    fi
-  fi
+# 2. Check if setup was completed
+if [[ ! -d "backend/.venv" ]]; then
+  die "backend/.venv is missing. Please run ./setup.sh first!"
+fi
+if [[ ! -d "frontend/node_modules" ]]; then
+  die "frontend/node_modules is missing. Please run ./setup.sh first!"
+fi
 
+# 3. Check Docker status
+if ! command -v docker >/dev/null 2>&1; then
+  die "Docker command is missing. Please install and start Docker Desktop."
+fi
+
+if ! docker info >/dev/null 2>&1; then
+  log "docker" "Docker daemon is not running. Starting Docker Desktop..."
   if [[ "$(uname -s)" == "Darwin" ]]; then
     open -a Docker >/dev/null 2>&1 || true
   elif command -v systemctl >/dev/null 2>&1; then
@@ -45,125 +39,45 @@ ensure_docker() {
   fi
 
   printf 'Waiting for Docker to become ready'
-  for _ in {1..90}; do
+  for _ in {1..45}; do
     if docker info >/dev/null 2>&1; then
       printf ' ready.\n'
-      docker compose version >/dev/null 2>&1 || die "Docker Compose is unavailable. Update Docker Desktop and run this file again."
-      return
+      break
     fi
     printf '.'
     sleep 2
   done
   printf '\n'
-  die "Docker did not become ready within 3 minutes. Complete any Docker Desktop first-run prompts, then run this file again."
-}
+  docker info >/dev/null 2>&1 || die "Docker did not start in time. Make sure it is running and try again."
+fi
 
-ensure_python() {
-  log "3/7" "Checking Python 3.11+..."
-  PYTHON_CMD=""
-  for candidate in python3.12 python3 python; do
-    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
-      PYTHON_CMD="$candidate"
-      break
-    fi
-  done
-  if [[ -z "$PYTHON_CMD" ]]; then
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-      install_brew_package python@3.12
-      export PATH="$(brew --prefix python@3.12)/bin:$PATH"
-      PYTHON_CMD=python3.12
-    elif command -v apt-get >/dev/null 2>&1; then
-      sudo apt-get update
-      sudo apt-get install -y python3 python3-venv python3-pip
-      PYTHON_CMD=python3
-    else
-      die "Python 3.11+ is missing. Install it, then run this file again."
-    fi
+# 4. Start PostgreSQL container
+log "database" "Starting PostgreSQL container..."
+docker compose up -d postgres
+
+# 5. Launch Backend and Frontend dev servers
+log "start" "Starting the backend and frontend dev servers..."
+BACKEND_PYTHON="$ROOT_DIR/backend/.venv/bin/python"
+
+(cd "$ROOT_DIR/backend" && exec "$BACKEND_PYTHON" -m uvicorn app.main:app --reload) &
+BACKEND_PID=$!
+(cd "$ROOT_DIR/frontend" && exec npm run dev) &
+FRONTEND_PID=$!
+
+cleanup() {
+  printf '\nStopping development servers...\n'
+  kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
+}
+trap cleanup INT TERM EXIT
+
+# 6. Health check wait
+for _ in {1..30}; do
+  if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+    printf '\n=========================================\nPRISM is running!\nFrontend: http://localhost:5173\nBackend:  http://127.0.0.1:8000\nAPI docs: http://127.0.0.1:8000/docs\n\nPress Ctrl+C to stop both servers.\n=========================================\n'
+    wait
+    return
   fi
-  "$PYTHON_CMD" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' || die "Python 3.11+ is required."
-}
+  sleep 1
+done
 
-ensure_node() {
-  log "4/7" "Checking Node.js and npm..."
-  if ! command -v npm >/dev/null 2>&1; then
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-      install_brew_package node
-    elif command -v apt-get >/dev/null 2>&1; then
-      sudo apt-get update
-      sudo apt-get install -y nodejs npm
-    else
-      die "Node.js and npm are missing. Install Node.js LTS, then run this file again."
-    fi
-  fi
-  command -v npm >/dev/null 2>&1 || die "npm is still unavailable after installation. Restart the terminal and run this file again."
-}
-
-start_database() {
-  log "5/7" "Downloading and starting PostgreSQL..."
-  docker compose pull postgres || die "PostgreSQL image download failed. Check Docker and internet access."
-  if ! docker compose up -d --wait postgres; then
-    docker compose logs --tail=40 postgres || true
-    die "PostgreSQL did not become healthy."
-  fi
-}
-
-setup_backend() {
-  log "6/7" "Creating the backend virtual environment and installing dependencies..."
-  VENV_DIR="$ROOT_DIR/backend/.venv"
-  BACKEND_PYTHON="$VENV_DIR/bin/python"
-  if [[ ! -x "$BACKEND_PYTHON" ]]; then
-    "$PYTHON_CMD" -m venv "$VENV_DIR"
-  fi
-  "$BACKEND_PYTHON" -m pip install --upgrade pip
-  (cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -m pip install -e '.[dev]')
-}
-
-setup_frontend() {
-  log "7/7" "Installing frontend dependencies..."
-  if [[ -f "$ROOT_DIR/frontend/package-lock.json" ]]; then
-    (cd "$ROOT_DIR/frontend" && npm ci --no-audit --no-fund)
-  else
-    (cd "$ROOT_DIR/frontend" && npm install --no-audit --no-fund)
-  fi
-}
-
-verify_project() {
-  log "verify" "Running backend tests and the frontend test/build checks..."
-  (cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -m pytest)
-  (cd "$ROOT_DIR/frontend" && npm test -- --reporter=dot)
-  (cd "$ROOT_DIR/frontend" && npm run build)
-}
-
-launch_project() {
-  log "start" "Starting the backend and frontend..."
-  (cd "$ROOT_DIR/backend" && exec "$BACKEND_PYTHON" -m uvicorn app.main:app --reload) &
-  BACKEND_PID=$!
-  (cd "$ROOT_DIR/frontend" && exec npm run dev) &
-  FRONTEND_PID=$!
-
-  cleanup() {
-    printf '\nStopping development servers...\n'
-    kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
-  }
-  trap cleanup INT TERM EXIT
-
-  for _ in {1..30}; do
-    if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
-      printf '\nPRISM is running.\nFrontend: http://localhost:5173\nBackend:  http://127.0.0.1:8000\nAPI docs: http://127.0.0.1:8000/docs\nPress Ctrl+C to stop.\n'
-      wait
-      return
-    fi
-    sleep 1
-  done
-  die "The backend health check did not respond. Check the server output above."
-}
-
-ensure_env
-ensure_docker
-ensure_python
-ensure_node
-start_database
-setup_backend
-setup_frontend
-verify_project
-launch_project
+die "The backend health check did not respond. Check the server output above."

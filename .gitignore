@@ -10,6 +10,8 @@ __pycache__/
 dist/
 build/
 *.tsbuildinfo
+my_stuff/
 *.db
 start.bat
 stop.bat
+
