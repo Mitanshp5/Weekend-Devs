@@ -14,4 +14,8 @@ my_stuff/
 *.db
 start.bat
 stop.bat
+<<<<<<< HEAD
 .agents/
+=======
+
+>>>>>>> 203165b56a4af143cfe389f717091a70821ed8d5

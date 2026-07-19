@@ -1,149 +1,106 @@
 @echo off
+setlocal EnableExtensions EnableDelayedExpansion
+cd /d "%~dp0"
+set "ROOT_DIR=%CD%"
+set "DOCKER_CMD=docker"
+
 title PRISM Dev Launcher
 echo =========================================
 echo       PRISM Dev Environment Launcher    
 echo =========================================
+echo.
 
-:: Auto-create .env from .env.example if missing
+:: 1. Auto-create .env if missing, or load it
 if not exist ".env" (
-    if exist ".env.example" (
-        echo [WARNING] .env file not found. Copying .env.example to .env...
-        copy .env.example .env >nul
-    ) else (
-        echo [ERROR] Neither .env nor .env.example was found in the root directory!
+    echo [ERROR] The root .env file is missing. Please run setup.bat first!
+    pause
+    exit /b 1
+)
+
+for %%K in (POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_PORT PRISM_DATABASE_URL) do (
+    findstr /b /c:"%%K=" ".env" >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] .env is missing %%K. Please run setup.bat first!
         pause
         exit /b 1
     )
 )
 
-:: Load root .env file if it exists
-if exist ".env" (
-    for /f "usebackq delims== tokens=1,2" %%A in (".env") do (
-        set "%%A=%%B"
-    )
+for /f "usebackq delims== tokens=1,2" %%A in (".env") do (
+    set "%%A=%%B"
 )
 
-:: Detect Python command (py, python, or python3)
-set PYTHON_CMD=
-
-:: Try finding py, python, or python3 in system PATH using absolute paths
-for %%I in (py.exe) do set "PYTHON_CMD=%%~$PATH:I"
-if not "%PYTHON_CMD%"=="" goto :python_found
-
-for %%I in (python.exe) do set "PYTHON_CMD=%%~$PATH:I"
-if not "%PYTHON_CMD%"=="" goto :python_found
-
-for %%I in (python3.exe) do set "PYTHON_CMD=%%~$PATH:I"
-if not "%PYTHON_CMD%"=="" goto :python_found
-
-:: If not found in PATH, search standard Windows installation directories
-for /d %%D in ("%USERPROFILE%\AppData\Local\Programs\Python\Python3*") do (
-    if exist "%%D\python.exe" (
-        set "PYTHON_CMD=%%D\python.exe"
-        goto :python_found
-    )
-)
-for /d %%D in ("C:\Program Files\Python3*") do (
-    if exist "%%D\python.exe" (
-        set "PYTHON_CMD=%%D\python.exe"
-        goto :python_found
-    )
-)
-for /d %%D in ("C:\Python3*") do (
-    if exist "%%D\python.exe" (
-        set "PYTHON_CMD=%%D\python.exe"
-        goto :python_found
-    )
-)
-
-:python_found
-if "%PYTHON_CMD%"=="" (
-    echo Python was not found. Please install Python 3.11+.
-    pause
-    exit /b 1
-)
-
-:: Detect Node/npm
-set NPM_CMD=
-
-for %%I in (npm.cmd) do set "NPM_CMD=%%~$PATH:I"
-if not "%NPM_CMD%"=="" goto :npm_found
-
-if exist "C:\Program Files\nodejs\npm.cmd" (
-    set "NPM_CMD=C:\Program Files\nodejs\npm.cmd"
-    goto :npm_found
-)
-
-if exist "%USERPROFILE%\AppData\Roaming\npm\npm.cmd" (
-    set "NPM_CMD=%USERPROFILE%\AppData\Roaming\npm\npm.cmd"
-    goto :npm_found
-)
-
-:npm_found
-if "%NPM_CMD%"=="" (
-    echo npm/Node.js was not found. Please install Node.js.
-    pause
-    exit /b 1
-)
-
-:: 1. Start Docker Postgres
-echo [1/4] Starting PostgreSQL container...
-docker compose up -d postgres
-if %ERRORLEVEL% neq 0 (
-    echo Failed to start Postgres container. Please ensure Docker Desktop is running.
-    pause
-    exit /b 1
-)
-
-:: 2. Setup Backend
-echo [2/4] Setting up backend environment...
+:: 2. Check if setup was completed (venv and node_modules exist)
 if not exist "backend\.venv" (
-    echo Creating Python virtual environment...
-    "%PYTHON_CMD%" -m venv backend\.venv
-    if %ERRORLEVEL% neq 0 (
-        echo Failed to create virtual environment.
-        pause
-        exit /b 1
-    )
+    echo [ERROR] backend\.venv is missing. Please run setup.bat first!
+    pause
+    exit /b 1
 )
-
-echo Installing/updating backend dependencies...
-call backend\.venv\Scripts\pip install -e backend\[dev]
-if %ERRORLEVEL% neq 0 (
-    echo Failed to install backend dependencies.
+if not exist "frontend\node_modules" (
+    echo [ERROR] frontend\node_modules is missing. Please run setup.bat first!
     pause
     exit /b 1
 )
 
-:: 3. Setup Frontend
-echo [3/4] Setting up frontend environment...
-if not exist "frontend\node_modules" (
-    echo Installing frontend node packages...
-    pushd frontend
-    call "%NPM_CMD%" install
-    popd
-    if %ERRORLEVEL% neq 0 (
-        echo Failed to install frontend dependencies.
-        pause
-        exit /b 1
-    )
+:: 3. Verify Docker Desktop is running
+where docker >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Docker command was not found. Please ensure Docker Desktop is installed and running.
+    pause
+    exit /b 1
 )
 
-:: 4. Start Services in New Windows
-echo [4/4] Launching services in separate command windows...
+"%DOCKER_CMD%" info >nul 2>&1
+if errorlevel 1 (
+    echo Docker Desktop is not running. Attempting to start it...
+    if not exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" if exist "%LocalAppData%\Docker\Docker Desktop.exe" set "DOCKER_DESKTOP=%LocalAppData%\Docker\Docker Desktop.exe"
+    if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" set "DOCKER_DESKTOP=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+    if defined DOCKER_DESKTOP start "" "%DOCKER_DESKTOP%" >nul 2>&1
+    
+    echo Waiting for Docker Desktop to become ready...
+    for /l %%N in (1,1,45) do (
+        "%DOCKER_CMD%" info >nul 2>&1
+        if not errorlevel 1 goto :docker_ready
+        timeout /t 2 /nobreak >nul
+    )
+    echo [ERROR] Docker Desktop did not start in time. Make sure it is running and try again.
+    pause
+    exit /b 1
+)
 
-:: Launch Backend
-pushd backend
-start "PRISM Backend API" cmd /k "call .venv\Scripts\activate && uvicorn app.main:app --reload"
-popd
+:docker_ready
+:: 4. Start PostgreSQL container
+echo Starting PostgreSQL container...
+"%DOCKER_CMD%" compose up -d postgres
+if errorlevel 1 (
+    echo [ERROR] Failed to start PostgreSQL.
+    pause
+    exit /b 1
+)
 
-:: Launch Frontend
-pushd frontend
-start "PRISM Frontend Dev" cmd /k "call "%NPM_CMD%" run dev"
-popd
+:: 5. Launch Backend and Frontend dev servers
+echo Starting the backend and frontend servers...
+start "PRISM Backend API" /D "%ROOT_DIR%\backend" cmd.exe /k .venv\Scripts\python.exe -m uvicorn app.main:app --reload
+start "PRISM Frontend Dev" /D "%ROOT_DIR%\frontend" cmd /k "npm.cmd run dev"
 
+:: 6. Health check wait
+timeout /t 4 /nobreak >nul
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$deadline=(Get-Date).AddSeconds(30); do { try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health; if ($r.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 1 } while ((Get-Date) -lt $deadline); exit 1"
+if errorlevel 1 (
+    echo [ERROR] Backend health check did not respond. Check the server windows for details.
+    pause
+    exit /b 1
+)
+
+echo.
 echo =========================================
-echo Both servers launched successfully!
-echo   - Backend API: http://127.0.0.1:8000
-echo   - Frontend Dev: http://localhost:5173
+echo PRISM is running!
+echo Frontend: http://localhost:5173
+echo Backend:  http://127.0.0.1:8000
+echo API docs: http://127.0.0.1:8000/docs
+echo.
+echo Close the two server windows to stop the app.
+echo PostgreSQL remains running until you use:
+echo   docker compose stop postgres
 echo =========================================
+exit /b 0
