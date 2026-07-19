@@ -1,26 +1,26 @@
 import { Link } from "react-router-dom";
 
+import prismLearningHero from "../assets/prism-learning-hero.png";
 import { PageTransition } from "../components/PageTransition";
-import { PrismParticleField } from "../components/PrismParticleField";
-import { PrismSignature } from "../components/PrismSignature";
 
 export function StartPage() {
   return (
     <PageTransition className="app-shell">
-      <PrismParticleField />
-      <section className="hero" aria-labelledby="page-title">
-        <div className="hero-heading">
-          <div>
-            <p className="eyebrow">PRISM · adaptive learning</p>
-            <h1 id="page-title">Learning, made legible.</h1>
+      <section className="start-hero" aria-labelledby="page-title">
+        <div className="start-copy">
+          <p className="eyebrow">PRISM / adaptive learning</p>
+          <h1 id="page-title">Make the next step clear.</h1>
+          <p className="hero-copy">
+            PRISM turns a learner response into visible evidence, a focused concept gap, and an explainable next action.
+          </p>
+          <div className="hero-action">
+            <Link className="primary-action" to="/diagnostic">Start diagnostic</Link>
+            <p>Begin with a short check-in. You can see the reasoning behind every recommendation.</p>
           </div>
-          <PrismSignature />
         </div>
-        <p className="hero-copy">PRISM does more than mark answers. It captures evidence, maps the smallest concept gap, and makes the next learning step visible.</p>
-        <div className="hero-action">
-          <p>Start with a short check-in. PRISM will explain its recommendation before you choose what comes next.</p>
-          <Link className="primary-action" to="/diagnostic">Start diagnostic</Link>
-        </div>
+        <figure className="hero-art">
+          <img src={prismLearningHero} alt="Student working at a desk inside layers of translucent prism light" />
+        </figure>
       </section>
     </PageTransition>
   );
