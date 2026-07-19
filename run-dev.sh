@@ -1,168 +1,169 @@
 #!/usr/bin/env bash
+set -Eeuo pipefail
 
-echo "========================================="
-echo "       PRISM Dev Environment Launcher    "
-echo "========================================="
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT_DIR"
 
-# Auto-create .env from .env.example if missing
-if [ ! -f ".env" ]; then
-    if [ -f ".env.example" ]; then
-        echo "[WARNING] .env file not found. Copying .env.example to .env..."
-        cp .env.example .env
-    else
-        echo "[ERROR] Neither .env nor .env.example was found in the root directory!"
-        exit 1
-    fi
-fi
+log() { printf '\n[%s] %s\n' "$1" "$2"; }
+die() { printf '\n[ERROR] %s\n' "$1" >&2; exit 1; }
 
-# Detect Python
-PYTHON_CMD=""
-for cmd in py python python3; do
-    if command -v "$cmd" &> /dev/null; then
-        # Verify it runs and is not the empty Windows Store alias
-        if "$cmd" --version &> /dev/null; then
-            PYTHON_CMD=$(which "$cmd")
-            break
-        fi
-    fi
-done
-
-if [ -z "$PYTHON_CMD" ]; then
-    # Search standard Windows installation folders (if in Git Bash/WSL/Windows environment)
-    UPATH=$(pwd -P)
-    if [ -n "$USERPROFILE" ]; then
-        UPATH=$(echo "$USERPROFILE" | sed 's/\\/\//g' | sed -r 's/^([A-Za-z]):/\/\1/')
-    fi
-    
-    for dir in "$UPATH"/AppData/Local/Programs/Python/Python3*; do
-        if [ -f "$dir/python.exe" ]; then
-            PYTHON_CMD="$dir/python.exe"
-            break
-        fi
-    done
-fi
-
-if [ -z "$PYTHON_CMD" ]; then
-    for dir in "/c/Program Files/Python3"* "/cygdrive/c/Program Files/Python3"*; do
-        if [ -f "$dir/python.exe" ]; then
-            PYTHON_CMD="$dir/python.exe"
-            break
-        fi
-    done
-fi
-
-if [ -z "$PYTHON_CMD" ]; then
-    echo "Python was not found. Please install Python 3.11+."
-    exit 1
-fi
-
-# Detect npm
-NPM_CMD=""
-if command -v npm &> /dev/null; then
-    NPM_CMD=$(which npm)
-fi
-
-if [ -z "$NPM_CMD" ]; then
-    for path in "/c/Program Files/nodejs/npm" "/c/Program Files/nodejs/npm.cmd" "/cygdrive/c/Program Files/nodejs/npm"; do
-        if [ -f "$path" ]; then
-            NPM_CMD="$path"
-            break
-        fi
-    done
-fi
-
-if [ -z "$NPM_CMD" ]; then
-    echo "npm/Node.js was not found. Please install Node.js."
-    exit 1
-fi
-
-# 1. Start Docker Postgres
-echo "[1/4] Starting PostgreSQL container..."
-docker compose up -d postgres
-if [ $? -ne 0 ]; then
-    echo "Failed to start Postgres container. Please ensure Docker Desktop is running."
-    exit 1
-fi
-
-# 2. Check Backend Virtual Environment
-echo "[2/4] Setting up backend environment..."
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$PROJECT_ROOT/backend"
-VENV_DIR="$BACKEND_DIR/.venv"
-
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    source "$PROJECT_ROOT/.env"
-fi
-
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating Python virtual environment..."
-    "$PYTHON_CMD" -m venv "$VENV_DIR"
-    if [ $? -ne 0 ]; then
-        echo "Failed to create virtual environment."
-        exit 1
-    fi
-fi
-
-echo "Installing/updating backend dependencies..."
-if [ -f "$VENV_DIR/Scripts/pip" ]; then
-    # Windows Git Bash
-    "$VENV_DIR/Scripts/pip" install -e "$BACKEND_DIR[dev]"
-else
-    # Unix-like Git Bash/WSL
-    "$VENV_DIR/bin/pip" install -e "$BACKEND_DIR[dev]"
-fi
-
-if [ $? -ne 0 ]; then
-    echo "Failed to install backend dependencies."
-    exit 1
-fi
-
-# 3. Check Frontend Dependencies
-echo "[3/4] Setting up frontend environment..."
-FRONTEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/frontend"
-NODE_MODULES_DIR="$FRONTEND_DIR/node_modules"
-
-if [ ! -d "$NODE_MODULES_DIR" ]; then
-    echo "Installing frontend node packages..."
-    (cd "$FRONTEND_DIR" && "$NPM_CMD" install)
-    if [ $? -ne 0 ]; then
-        echo "Failed to install frontend dependencies."
-        exit 1
-    fi
-fi
-
-# 4. Start Services
-echo "[4/4] Launching services concurrently..."
-
-# Launch Backend API
-if [ -f "$VENV_DIR/Scripts/uvicorn" ]; then
-    # Windows Git Bash
-    (cd "$BACKEND_DIR" && "$VENV_DIR/Scripts/uvicorn" app.main:app --reload) &
-else
-    # Unix-like Git Bash/WSL
-    (cd "$BACKEND_DIR" && "$VENV_DIR/bin/uvicorn" app.main:app --reload) &
-fi
-BACKEND_PID=$!
-
-# Launch Frontend Dev
-(cd "$FRONTEND_DIR" && "$NPM_CMD" run dev) &
-FRONTEND_PID=$!
-
-# Handle shutdown
-cleanup() {
-    echo "Stopping servers..."
-    kill $BACKEND_PID
-    kill $FRONTEND_PID
-    exit
+ensure_env() {
+  if [[ ! -f .env ]]; then
+    [[ -f .env.example ]] || die ".env.example is missing from the repository root."
+    log "1/7" "Creating the root .env file from .env.example..."
+    cp .env.example .env
+  fi
+  local key
+  for key in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_PORT PRISM_DATABASE_URL; do
+    grep -q "^${key}=" .env || die ".env is missing ${key}. Restore it from .env.example and try again."
+  done
 }
 
-trap cleanup SIGINT SIGTERM
+install_brew_package() {
+  command -v brew >/dev/null 2>&1 || die "Homebrew is required to install $1. Install Homebrew, then run this file again."
+  brew install "$1"
+}
 
-echo "========================================="
-echo "Both servers launched successfully!"
-echo "  - Backend API: http://127.0.0.1:8000"
-echo "  - Frontend Dev: http://localhost:5173"
-echo "Press Ctrl+C to stop both servers."
-echo "========================================="
+ensure_docker() {
+  log "2/7" "Checking Docker Desktop..."
+  if ! command -v docker >/dev/null 2>&1; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      command -v brew >/dev/null 2>&1 || die "Docker is missing. Install Docker Desktop or Homebrew, then run this file again."
+      brew install --cask docker
+    elif command -v apt-get >/dev/null 2>&1; then
+      sudo apt-get update
+      sudo apt-get install -y docker.io docker-compose-plugin
+    else
+      die "Docker is missing and this operating system has no supported package manager. Install Docker Desktop, then run this file again."
+    fi
+  fi
 
-wait
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    open -a Docker >/dev/null 2>&1 || true
+  elif command -v systemctl >/dev/null 2>&1; then
+    sudo systemctl start docker >/dev/null 2>&1 || true
+  fi
+
+  printf 'Waiting for Docker to become ready'
+  for _ in {1..90}; do
+    if docker info >/dev/null 2>&1; then
+      printf ' ready.\n'
+      docker compose version >/dev/null 2>&1 || die "Docker Compose is unavailable. Update Docker Desktop and run this file again."
+      return
+    fi
+    printf '.'
+    sleep 2
+  done
+  printf '\n'
+  die "Docker did not become ready within 3 minutes. Complete any Docker Desktop first-run prompts, then run this file again."
+}
+
+ensure_python() {
+  log "3/7" "Checking Python 3.11+..."
+  PYTHON_CMD=""
+  for candidate in python3.12 python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+      PYTHON_CMD="$candidate"
+      break
+    fi
+  done
+  if [[ -z "$PYTHON_CMD" ]]; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      install_brew_package python@3.12
+      export PATH="$(brew --prefix python@3.12)/bin:$PATH"
+      PYTHON_CMD=python3.12
+    elif command -v apt-get >/dev/null 2>&1; then
+      sudo apt-get update
+      sudo apt-get install -y python3 python3-venv python3-pip
+      PYTHON_CMD=python3
+    else
+      die "Python 3.11+ is missing. Install it, then run this file again."
+    fi
+  fi
+  "$PYTHON_CMD" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' || die "Python 3.11+ is required."
+}
+
+ensure_node() {
+  log "4/7" "Checking Node.js and npm..."
+  if ! command -v npm >/dev/null 2>&1; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      install_brew_package node
+    elif command -v apt-get >/dev/null 2>&1; then
+      sudo apt-get update
+      sudo apt-get install -y nodejs npm
+    else
+      die "Node.js and npm are missing. Install Node.js LTS, then run this file again."
+    fi
+  fi
+  command -v npm >/dev/null 2>&1 || die "npm is still unavailable after installation. Restart the terminal and run this file again."
+}
+
+start_database() {
+  log "5/7" "Downloading and starting PostgreSQL..."
+  docker compose pull postgres || die "PostgreSQL image download failed. Check Docker and internet access."
+  if ! docker compose up -d --wait postgres; then
+    docker compose logs --tail=40 postgres || true
+    die "PostgreSQL did not become healthy."
+  fi
+}
+
+setup_backend() {
+  log "6/7" "Creating the backend virtual environment and installing dependencies..."
+  VENV_DIR="$ROOT_DIR/backend/.venv"
+  BACKEND_PYTHON="$VENV_DIR/bin/python"
+  if [[ ! -x "$BACKEND_PYTHON" ]]; then
+    "$PYTHON_CMD" -m venv "$VENV_DIR"
+  fi
+  "$BACKEND_PYTHON" -m pip install --upgrade pip
+  (cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -m pip install -e '.[dev]')
+}
+
+setup_frontend() {
+  log "7/7" "Installing frontend dependencies..."
+  if [[ -f "$ROOT_DIR/frontend/package-lock.json" ]]; then
+    (cd "$ROOT_DIR/frontend" && npm ci --no-audit --no-fund)
+  else
+    (cd "$ROOT_DIR/frontend" && npm install --no-audit --no-fund)
+  fi
+}
+
+verify_project() {
+  log "verify" "Running backend tests and the frontend test/build checks..."
+  (cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -m pytest)
+  (cd "$ROOT_DIR/frontend" && npm test -- --reporter=dot)
+  (cd "$ROOT_DIR/frontend" && npm run build)
+}
+
+launch_project() {
+  log "start" "Starting the backend and frontend..."
+  (cd "$ROOT_DIR/backend" && exec "$BACKEND_PYTHON" -m uvicorn app.main:app --reload) &
+  BACKEND_PID=$!
+  (cd "$ROOT_DIR/frontend" && exec npm run dev) &
+  FRONTEND_PID=$!
+
+  cleanup() {
+    printf '\nStopping development servers...\n'
+    kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
+  }
+  trap cleanup INT TERM EXIT
+
+  for _ in {1..30}; do
+    if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+      printf '\nPRISM is running.\nFrontend: http://localhost:5173\nBackend:  http://127.0.0.1:8000\nAPI docs: http://127.0.0.1:8000/docs\nPress Ctrl+C to stop.\n'
+      wait
+      return
+    fi
+    sleep 1
+  done
+  die "The backend health check did not respond. Check the server output above."
+}
+
+ensure_env
+ensure_docker
+ensure_python
+ensure_node
+start_database
+setup_backend
+setup_frontend
+verify_project
+launch_project
