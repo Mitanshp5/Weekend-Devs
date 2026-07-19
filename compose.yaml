@@ -1,14 +1,17 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: quay.io/sclorg/postgresql-16-c10s:latest
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRESQL_DATABASE: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRESQL_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - prism-postgres-data:/var/lib/postgresql/data
+      - prism-postgres-data:/var/lib/pgsql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
