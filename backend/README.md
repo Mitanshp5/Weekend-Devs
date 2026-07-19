@@ -1,24 +1,31 @@
 # PRISM API
 
-The FastAPI backend for the one-week PRISM prototype.
+FastAPI backend for the PRISM prototype.
 
 ## Local development
 
+1. Copy `.env.example` to `.env` at the repository root and replace the password placeholder.
+2. Start PostgreSQL:
+
 ```bash
+docker compose up -d postgres
+```
+
+3. Export the database URL before starting the API:
+
+```bash
+set -a; source ../.env; set +a
 python3 -m venv .venv
-.venv/bin/python -m pip install -e .
-.venv/bin/python -m pip install pytest httpx
+.venv/bin/python -m pip install -e '.[dev]'
 .venv/bin/python -m pytest tests/ -v
 .venv/bin/python -m uvicorn app.main:app --reload
 ```
 
-Health check: `GET /api/health`
+## Current API
 
-## Foundation status
+- `GET /api/health`
+- `GET /api/catalog/subjects?grade=8`
+- `GET /api/catalog/subjects/{subject_slug}/units?grade=8`
+- `GET /api/catalog/units/{unit_slug}/concepts`
 
-Implemented and tested:
-- deterministic numeric scoring with misconception tags;
-- fixed-parameter, explainable BKT mastery update;
-- health endpoint.
-
-The learner UI, curriculum content, diagnostic API, root-gap engine, and persistence are still pending.
+The catalog is seeded idempotently into PostgreSQL on first access. Grade 8 Mathematics, Science, and English are database records; frontend code fetches them through the API rather than carrying curriculum data.
