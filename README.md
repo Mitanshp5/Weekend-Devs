@@ -6,7 +6,7 @@ PRISM workspace: evidence-backed EdTech research and a proof-quality one-week pr
 - Research and architecture phase only. No product/final application code has been added.
 
 ## Local database
-- `compose.yaml` uses PostgreSQL 18. Major PostgreSQL upgrades require a data migration, so do not attach an existing PostgreSQL 16 data volume directly to this service.
+- `compose.yaml` uses the official `postgres:18` image. Major PostgreSQL upgrades require a data migration, so do not attach an existing PostgreSQL 16 data volume directly to this service.
 
 ## Layout
 - `research/companies/` — public-source platform research
