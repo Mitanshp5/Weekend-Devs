@@ -243,3 +243,127 @@ def concepts_for_unit(unit_slug: str) -> list[dict[str, str | int]] | None:
                 (unit_slug,),
             )
             return list(cursor.fetchall())
+
+
+# ===========================================================================
+# TUTOR ANALYTICS DUMMY SEED DATA & HELPERS
+# ===========================================================================
+# The following variables and functions contain synthetic/dummy database values
+# and seed scripts constructed specifically for demonstrating the dashboard, BKT,
+# and Socratic tutor features in the Tutor Analytics module.
+# ===========================================================================
+
+SAMPLE_LEARNERS = [
+    ("student-01", 8, "foundational", "Grade-Level", "eq.inverse_operations",
+     "num.signed_operations", 0.72, "3 recent attempts show sign errors",
+     "2-minute signed-number review card", 0),
+    ("student-02", 8, "developing", "Grade-Level", "eq.multi_step",
+     "eq.inverse_operations", 0.78, "Stops after isolating constant",
+     "2-minute inverse-operation mini-whiteboard check", 1),
+    ("student-03", 8, "developing", "Grade-Level", "eq.multi_step",
+     None, None, None, None, 0),
+    ("student-04", 8, "ready_for_extension", "Advanced", "eq.word_translation",
+     None, None, None, None, 0),
+    ("student-05", 8, "needs_prerequisite_support", "Foundational", "num.signed_operations",
+     "num.mul_div_fluency", 0.85, "Consistent division errors",
+     "Multiplication/division fluency drill", 0),
+]
+
+SAMPLE_MASTERY = [
+    ("student-01", "num.signed_operations", 0.35, 5, 1, ["eq.sign_not_transferred"], "medium", False),
+    ("student-01", "eq.inverse_operations", 0.48, 3, 1, ["eq.stops_before_division"], "medium", False),
+    ("student-01", "num.signed_operations", 0.42, 6, 2, [], "medium", False),
+    ("student-02", "eq.inverse_operations", 0.31, 4, 1, ["eq.stops_before_division"], "medium", False),
+    ("student-02", "eq.inverse_operations", 0.45, 5, 2, ["eq.stops_before_division"], "medium", False),
+    ("student-02", "eq.multi_step", 0.55, 3, 1, [], "high", False),
+    ("student-03", "eq.inverse_operations", 0.72, 6, 3, [], "low", False),
+    ("student-03", "eq.multi_step", 0.58, 4, 2, [], "medium", False),
+    ("student-04", "eq.inverse_operations", 0.88, 8, 5, [], "low", False),
+    ("student-04", "eq.multi_step", 0.82, 7, 4, [], "low", False),
+    ("student-04", "eq.word_translation", 0.45, 3, 1, ["eq.sign_not_transferred"], "high", True),
+    ("student-05", "num.mul_div_fluency", 0.28, 4, 0, ["num.division_error"], "high", True),
+    ("student-05", "num.signed_operations", 0.32, 3, 0, ["eq.sign_not_transferred"], "high", False),
+]
+
+SAMPLE_CLUSTERS = [
+    (8, "eq.stops_before_division", "eq.inverse_operations", 9, 24, 0.38, 0.25, 0.18, 0.0,
+     "Ask the class: in 3x = 21, is x alone yet? What operation reverses ×3?"),
+    (8, "eq.sign_not_transferred", "eq.inverse_operations", 5, 24, 0.21, 0.12, 0.05, 0.0,
+     "Show the balance model: what happens to the sign when you move a term?"),
+    (8, "num.division_error", "num.mul_div_fluency", 3, 24, 0.13, 0.08, 0.02, 0.0,
+     "Quick 1-minute division fluency drill with the class."),
+]
+
+
+def _compute_cluster_impact(
+    affected: int, total: int,
+    recent_incorrect: float, repeat_error: float,
+    trend: float,
+) -> float:
+    """Compute weighted impact score per the spec formula."""
+    if total == 0:
+        return 0.0
+    return round(
+        0.42 * (affected / total)
+        + 0.22 * recent_incorrect
+        + 0.18 * repeat_error
+        + 0.10 * 0.5  # downstream_dependency_risk placeholder
+        + 0.08 * trend,
+        4,
+    )
+
+
+def seed_tutor_analytics_data(force: bool = False) -> None:
+    """Populate Tutor Analytics tables with synthetic demo data (idempotent)."""
+    initialize_database()
+    with connect() as connection:
+        with connection.cursor() as cursor:
+            if force:
+                cursor.execute(
+                    "TRUNCATE TABLE teacher_summaries, mastery_history, misconception_clusters, tutor_sessions;"
+                )
+            else:
+                # Avoid duplicate seeding
+                cursor.execute("SELECT count(*) AS cnt FROM teacher_summaries")
+                if cursor.fetchone()["cnt"] > 0:
+                    return
+
+            for row in SAMPLE_LEARNERS:
+                cursor.execute(
+                    """
+                    INSERT INTO teacher_summaries
+                        (learner_id, grade, band, current_path, current_target_concept,
+                         likely_blocker_concept, blocker_confidence, evidence_summary,
+                         recommended_action, pending_sync_count)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    row,
+                )
+
+            for row in SAMPLE_MASTERY:
+                learner_id, concept_id, p_know, ev, indep, tags, unc, hint = row
+                cursor.execute(
+                    """
+                    INSERT INTO mastery_history
+                        (learner_id, concept_id, p_know, evidence_count,
+                         independent_correct_count, recent_error_tags, uncertainty, hint_used)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (learner_id, concept_id, p_know, ev, indep, tags, unc, hint),
+                )
+
+            for row in SAMPLE_CLUSTERS:
+                grade, tag, concept, affected, total, recent, repeat, trend, _, intervention = row
+                impact = _compute_cluster_impact(affected, total, recent, repeat, trend)
+                cursor.execute(
+                    """
+                    INSERT INTO misconception_clusters
+                        (grade, error_tag, concept_id, affected_count, total_active,
+                         recent_incorrect_rate, repeat_error_rate, trend_growth,
+                         impact_score, suggested_intervention)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (grade, tag, concept, affected, total, recent, repeat, trend,
+                     impact, intervention),
+                )
+
