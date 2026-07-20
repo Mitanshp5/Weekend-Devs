@@ -55,7 +55,11 @@ fi
 log "database" "Starting PostgreSQL container..."
 docker compose up -d postgres
 
-# 5. Launch Backend and Frontend dev servers
+# 5. Initialize PostgreSQL schema and idempotent seed data
+log "database" "Initializing PostgreSQL schema and seed data..."
+(cd "$ROOT_DIR/backend" && "$ROOT_DIR/backend/.venv/bin/python" -c 'from app.database import initialize_database; initialize_database()')
+
+# 6. Launch Backend and Frontend dev servers
 log "start" "Starting the backend and frontend dev servers..."
 BACKEND_PYTHON="$ROOT_DIR/backend/.venv/bin/python"
 

@@ -18,6 +18,32 @@ SEED_SUBJECTS = (
     (8, "english", "English"),
 )
 
+# Prototype data is persisted in PostgreSQL on first initialization so every
+# route reads database records rather than frontend-local sample values.
+ANALYTICS_LEARNERS = (
+    ("student-01", 8, "foundational", "Grade-Level", "eq.inverse_operations", "num.signed_operations", .72, "Recent attempts show sign errors.", "Review signed-number operations."),
+    ("student-02", 8, "developing", "Grade-Level", "eq.multi_step", "eq.inverse_operations", .78, "Stops after isolating the constant.", "Practice inverse operations."),
+    ("student-03", 8, "developing", "Grade-Level", "eq.multi_step", None, None, None, None),
+    ("student-04", 8, "ready_for_extension", "Advanced", "eq.word_translation", None, None, None, None),
+    ("student-05", 8, "needs_prerequisite_support", "Foundational", "num.signed_operations", "num.mul_div_fluency", .85, "Consistent division errors.", "Practice multiplication and division fluency."),
+)
+ANALYTICS_MASTERY = (
+    ("student-01", "num.signed_operations", .42, 6, 2, [], "medium", False),
+    ("student-01", "eq.inverse_operations", .48, 3, 1, ["eq.stops_before_division"], "medium", False),
+    ("student-02", "eq.inverse_operations", .31, 4, 1, ["eq.stops_before_division"], "medium", False),
+    ("student-02", "eq.inverse_operations", .45, 5, 2, ["eq.stops_before_division"], "medium", False),
+    ("student-02", "eq.multi_step", .55, 3, 1, [], "high", False),
+    ("student-03", "eq.inverse_operations", .72, 6, 3, [], "low", False),
+    ("student-04", "eq.inverse_operations", .88, 8, 5, [], "low", False),
+    ("student-04", "eq.multi_step", .82, 7, 4, [], "low", False),
+    ("student-05", "num.mul_div_fluency", .28, 4, 0, ["num.division_error"], "high", True),
+)
+ANALYTICS_CLUSTERS = (
+    (8, "eq.stops_before_division", "eq.inverse_operations", 9, 24, .38, .25, .18, .3671, "Ask which inverse operation isolates the variable."),
+    (8, "eq.sign_not_transferred", "eq.inverse_operations", 5, 24, .21, .12, .05, .2307, "Use a balance model to discuss signs."),
+    (8, "num.division_error", "num.mul_div_fluency", 3, 24, .13, .08, .02, .1486, "Run a short division-fluency check."),
+)
+
 
 def database_url() -> str:
     return os.environ["PRISM_DATABASE_URL"]
@@ -194,6 +220,29 @@ def initialize_database() -> None:
                     for position, concept in enumerate(concepts, start=1)
                 ],
             )
+            cursor.execute("SELECT EXISTS (SELECT 1 FROM teacher_summaries) AS has_analytics")
+            if not cursor.fetchone()["has_analytics"]:
+                cursor.executemany(
+                    """INSERT INTO teacher_summaries
+                    (learner_id, grade, band, current_path, current_target_concept,
+                     likely_blocker_concept, blocker_confidence, evidence_summary, recommended_action)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    ANALYTICS_LEARNERS,
+                )
+                cursor.executemany(
+                    """INSERT INTO mastery_history
+                    (learner_id, concept_id, p_know, evidence_count, independent_correct_count,
+                     recent_error_tags, uncertainty, hint_used)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    ANALYTICS_MASTERY,
+                )
+                cursor.executemany(
+                    """INSERT INTO misconception_clusters
+                    (grade, error_tag, concept_id, affected_count, total_active,
+                     recent_incorrect_rate, repeat_error_rate, trend_growth, impact_score, suggested_intervention)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    ANALYTICS_CLUSTERS,
+                )
 
 
 def subjects_for_grade(grade: int) -> list[dict[str, str | int]]:

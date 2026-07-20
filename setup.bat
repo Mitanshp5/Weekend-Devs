@@ -174,6 +174,18 @@ if not "!RESULT!"=="0" (
     echo [ERROR] Backend dependency installation failed.
     goto :failed
 )
+goto :initialize_database
+
+:initialize_database
+echo Initializing PostgreSQL schema and idempotent seed data...
+pushd "%ROOT_DIR%\backend"
+"%BACKEND_PYTHON%" -c "from app.database import initialize_database; initialize_database()"
+set "RESULT=!ERRORLEVEL!"
+popd
+if not "!RESULT!"=="0" (
+    echo [ERROR] Database initialization failed.
+    goto :failed
+)
 goto :setup_frontend
 
 :setup_frontend

@@ -78,7 +78,19 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: 5. Launch Backend and Frontend dev servers
+:: 5. Initialize PostgreSQL schema and idempotent seed data
+ echo Initializing PostgreSQL schema and seed data...
+pushd "%ROOT_DIR%\backend"
+.venv\Scripts\python.exe -c "from app.database import initialize_database; initialize_database()"
+set "RESULT=!ERRORLEVEL!"
+popd
+if not "!RESULT!"=="0" (
+    echo [ERROR] Database initialization failed.
+    pause
+    exit /b 1
+)
+
+:: 6. Launch Backend and Frontend dev servers
 echo Starting the backend and frontend servers...
 start "PRISM Backend API" /D "%ROOT_DIR%\backend" cmd.exe /k .venv\Scripts\python.exe -m uvicorn app.main:app --reload
 start "PRISM Frontend Dev" /D "%ROOT_DIR%\frontend" cmd /k "npm.cmd run dev"
@@ -92,15 +104,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: 7. Seed Tutor Analytics data
-echo Seeding Tutor Analytics data...
-backend\.venv\Scripts\python.exe -c "from app.database import seed_tutor_analytics_data; seed_tutor_analytics_data(force=True)"
-if errorlevel 1 (
-    echo [WARNING] Failed to seed Tutor Analytics data. Skipping.
-)
+:: 7. Ready message
 
-echo.
-echo =========================================
 echo PRISM is running!
 echo Frontend: http://localhost:5173
 echo Backend:  http://127.0.0.1:8000
