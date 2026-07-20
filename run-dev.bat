@@ -41,6 +41,11 @@ if not exist "frontend\node_modules" (
     pause
     exit /b 1
 )
+if not exist "flowwatch-sidecar\node_modules" (
+    echo [ERROR] flowwatch-sidecar\node_modules is missing. Please run setup.bat first!
+    pause
+    exit /b 1
+)
 
 :: 3. Verify Docker Desktop is running
 where docker >nul 2>&1
@@ -69,31 +74,20 @@ if errorlevel 1 (
 )
 
 :docker_ready
-:: 4. Start PostgreSQL container
-echo Starting PostgreSQL container...
-"%DOCKER_CMD%" compose up -d postgres
+:: 4. Start PostgreSQL and Redis containers
+echo Starting PostgreSQL and Redis containers...
+"%DOCKER_CMD%" compose up -d postgres redis
 if errorlevel 1 (
     echo [ERROR] Failed to start PostgreSQL.
     pause
     exit /b 1
 )
 
-:: 5. Initialize PostgreSQL schema and idempotent seed data
- echo Initializing PostgreSQL schema and seed data...
-pushd "%ROOT_DIR%\backend"
-.venv\Scripts\python.exe -c "from app.database import initialize_database; initialize_database()"
-set "RESULT=!ERRORLEVEL!"
-popd
-if not "!RESULT!"=="0" (
-    echo [ERROR] Database initialization failed.
-    pause
-    exit /b 1
-)
-
-:: 6. Launch Backend and Frontend dev servers
-echo Starting the backend and frontend servers...
+:: 5. Launch Backend, Frontend, and FlowWatch sidecar dev servers
+echo Starting the backend, frontend, and sidecar servers...
 start "PRISM Backend API" /D "%ROOT_DIR%\backend" cmd.exe /k .venv\Scripts\python.exe -m uvicorn app.main:app --reload
 start "PRISM Frontend Dev" /D "%ROOT_DIR%\frontend" cmd /k "npm.cmd run dev"
+start "PRISM FlowWatch Sidecar" /D "%ROOT_DIR%\flowwatch-sidecar" cmd /k "npm.cmd start"
 
 :: 6. Health check wait
 timeout /t 4 /nobreak >nul
@@ -103,15 +97,29 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$deadline=(Get-Date).AddSeconds(30); do { try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9400/api/health; if ($r.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 1 } while ((Get-Date) -lt $deadline); exit 1"
+if errorlevel 1 (
+    echo [ERROR] FlowWatch sidecar did not respond on http://localhost:9400. Check the sidecar window.
+    pause
+    exit /b 1
+)
 
-:: 7. Ready message
+:: 7. Seeding is handled automatically by initialize_database() on first startup
 
-echo PRISM is running!
-echo Frontend: http://localhost:5173
-echo Backend:  http://127.0.0.1:8000
-echo API docs: http://127.0.0.1:8000/docs
+:: 8. Clear Redis auth rate-limit counters (dev only — prevents 429 on login after restarts)
+echo Clearing auth rate-limit counters...
+docker compose exec -T redis redis-cli DEL "rate_limit:login:::1" "rate_limit:register:::1" >nul 2>&1
+
 echo.
-echo Close the two server windows to stop the app.
+echo =========================================
+echo PRISM is running!
+echo Frontend:          http://localhost:5173
+echo Backend:           http://127.0.0.1:8000
+echo API docs:          http://127.0.0.1:8000/docs
+echo FlowWatch Sidecar: http://localhost:9400
+echo FlowWatch Ops:     http://localhost:9400/ops
+echo.
+echo Close the three server windows to stop the app.
 echo PostgreSQL remains running until you use:
 echo   docker compose stop postgres
 echo =========================================

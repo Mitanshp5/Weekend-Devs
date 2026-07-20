@@ -2,49 +2,144 @@
  * TutorPage — Magoosh-inspired structured Socratic tutor interface.
  *
  * Features:
+ *   - Uses the logged-in user's email as learner_id (no manual dropdown)
+ *   - Subject filter pills (Math / Science / English)
  *   - AI Tutor featured promo card (Magoosh style)
  *   - Question selector as lesson list
- *   - Chat widget with quick-select options
- *   - Hint escalation buttons
+ *   - Chat widget with quick-select guidance options
+ *   - User-friendly hint buttons with info tooltips
+ *   - Hint escalation ladder
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageTransition } from "../components/PageTransition";
 import {
   fetchQuestions,
+  postGuidance,
   postTutorRespond,
   type QuestionSummary,
   type TutorResponse,
 } from "../api/tutorAnalytics";
 
 export const CONCEPT_NAMES: Record<string, string> = {
+  // Math
   "num.signed_operations": "Integer Operations (Signed Numbers)",
   "eq.inverse_operations": "Basic Equations (Inverse Operations)",
   "eq.multi_step": "Multi-Step Equations",
   "eq.word_translation": "Word Problems (Equation Translation)",
   "num.mul_div_fluency": "Multiplication & Division Fluency",
+  "math.rational_numbers": "Rational Numbers",
+  "math.linear_equations": "Linear Equations in One Variable",
+  "math.quadrilaterals": "Understanding Quadrilaterals",
+  "math.data_handling": "Data Handling",
+  "math.squares_roots": "Squares and Square Roots",
+  // Science
+  "sci.crop_production": "Crop Production and Management",
+  "sci.microorganisms": "Microorganisms: Friend and Foe",
+  "sci.coal_petroleum": "Coal and Petroleum",
+  "sci.combustion_flame": "Combustion and Flame",
+  "sci.conservation": "Conservation of Plants and Animals",
+  // English
+  "eng.christmas_present": "The Best Christmas Present",
+  "eng.tsunami": "The Tsunami",
+  "eng.glimpses_past": "Glimpses of the Past",
+  "eng.bepin_choudhury": "Bepin Choudhury's Lapse of Memory",
+  "eng.summit_within": "The Summit Within",
 };
 
-const MODE_DISPLAY: Record<string, { label: string; color: string; icon: string }> = {
-  socratic_hint: { label: "Socratic hint", color: "#1bb576", icon: "💭" },
-  explain_error: { label: "Error explanation", color: "#e67e22", icon: "🔍" },
-  worked_step: { label: "Worked step", color: "#553285", icon: "📐" },
-  direct_explanation: { label: "Direct explanation", color: "#d63031", icon: "📖" },
-  check_thinking: { label: "Transfer check", color: "#553285", icon: "🧠" },
+/* Map concept_id prefix → subject for filtering */
+function getSubjectForConcept(conceptId: string): string {
+  if (conceptId.startsWith("math.") || conceptId.startsWith("num.") || conceptId.startsWith("eq.")) return "mathematics";
+  if (conceptId.startsWith("sci.")) return "science";
+  if (conceptId.startsWith("eng.")) return "english";
+  return "mathematics";
+}
+
+const SUBJECT_FILTERS = [
+  { key: "all", label: "All Subjects" },
+  { key: "mathematics", label: "📐 Mathematics" },
+  { key: "science", label: "🔬 Science" },
+  { key: "english", label: "📖 English" },
+];
+
+/* Backend mode → user-facing display names */
+const MODE_DISPLAY: Record<string, { label: string; userLabel: string; color: string; icon: string; tooltip: string }> = {
+  socratic_hint: {
+    label: "Socratic hint",
+    userLabel: "Think About It",
+    color: "#1bb576",
+    icon: "💭",
+    tooltip: "Socratic Hint — a question to guide your thinking without giving the answer",
+  },
+  explain_error: {
+    label: "Error explanation",
+    userLabel: "What Went Wrong",
+    color: "#e67e22",
+    icon: "🔍",
+    tooltip: "Error Explanation — identifies the specific mistake in your approach",
+  },
+  worked_step: {
+    label: "Worked step",
+    userLabel: "Show Me a Step",
+    color: "#553285",
+    icon: "📐",
+    tooltip: "Worked Step — walks through one key step of the solution",
+  },
+  direct_explanation: {
+    label: "Direct explanation",
+    userLabel: "Full Solution",
+    color: "#d63031",
+    icon: "📖",
+    tooltip: "Direct Explanation — the complete worked solution",
+  },
+  check_thinking: {
+    label: "Transfer check",
+    userLabel: "Transfer Check",
+    color: "#553285",
+    icon: "🧠",
+    tooltip: "Transfer Check — verifying you can apply the concept independently",
+  },
 };
 
-const HINT_STYLES: { label: string; color: string; border: string; bg: string }[] = [
-  { label: "💭 Socratic Hint", color: "#1bb576", border: "#1bb576", bg: "rgba(27,181,118,.06)" },
-  { label: "🔍 Error Explanation", color: "#e67e22", border: "#e67e22", bg: "rgba(230,126,34,.06)" },
-  { label: "📐 Worked Step", color: "#553285", border: "#553285", bg: "rgba(85,50,133,.06)" },
-  { label: "📖 Direct Explanation", color: "#d63031", border: "#d63031", bg: "rgba(214,48,49,.06)" },
+const HINT_BUTTONS: { key: string; label: string; color: string; border: string; bg: string; tooltip: string }[] = [
+  {
+    key: "socratic_hint",
+    label: "💭 Think About It",
+    color: "#1bb576",
+    border: "#1bb576",
+    bg: "rgba(27,181,118,.06)",
+    tooltip: "Socratic Hint — a question to guide your thinking without giving the answer",
+  },
+  {
+    key: "explain_error",
+    label: "🔍 What Went Wrong",
+    color: "#e67e22",
+    border: "#e67e22",
+    bg: "rgba(230,126,34,.06)",
+    tooltip: "Error Explanation — identifies the specific mistake in your approach",
+  },
+  {
+    key: "worked_step",
+    label: "📐 Show Me a Step",
+    color: "#553285",
+    border: "#553285",
+    bg: "rgba(85,50,133,.06)",
+    tooltip: "Worked Step — walks through one key step of the solution",
+  },
+  {
+    key: "direct_explanation",
+    label: "📖 Full Solution",
+    color: "#d63031",
+    border: "#d63031",
+    bg: "rgba(214,48,49,.06)",
+    tooltip: "Direct Explanation — the complete worked solution",
+  },
 ];
 
 const QUICK_OPTIONS = [
-  "Am I on track?",
-  "What should I study today?",
-  "What concept should I learn next?",
-  "Recommend practice questions based on my performance.",
+  { text: "Am I on track?", type: "am_i_on_track" },
+  { text: "What should I study next?", type: "what_to_study_next" },
+  { text: "Recommend practice questions", type: "recommend_practice" },
 ];
 
 interface ChatMessage {
@@ -56,7 +151,32 @@ interface ChatMessage {
 }
 
 export function TutorPage() {
-  const [learnerId, setLearnerId] = useState(() => new URLSearchParams(window.location.search).get("learner") ?? "");
+  /* Read logged-in user email from session — used as learner_id for all API calls */
+  const learnerId = (() => {
+    try {
+      const stored = localStorage.getItem("prism_user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        return user.email as string;
+      }
+    } catch { /* ignore */ }
+    return "";
+  })();
+  const learnerName = (() => {
+    try {
+      const stored = localStorage.getItem("prism_user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        return (user.username || user.email?.split("@")[0] || "Learner") as string;
+      }
+    } catch { /* ignore */ }
+    return "Learner";
+  })();
+
+  /* Subject filter */
+  const [subjectFilter, setSubjectFilter] = useState("all");
+
+  /* Tutor state */
   const [questions, setQuestions] = useState<QuestionSummary[]>([]);
   const [selectedQ, setSelectedQ] = useState<QuestionSummary | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -67,6 +187,7 @@ export function TutorPage() {
   const [solved, setSolved] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  /* Load questions */
   useEffect(() => {
     fetchQuestions()
       .then((data) => {
@@ -80,23 +201,57 @@ export function TutorPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
-  const handleSelectQuestion = useCallback((q: QuestionSummary) => {
-    setSelectedQ(q);
-    setAttempt(0);
-    setChatHistory([
-      {
-        role: "tutor",
-        content: `Hi there! How can I help you with "${q.prompt}"?`,
-        mode: "socratic_hint",
-      },
-    ]);
-    setAnswer("");
-    setSolved(false);
-  }, []);
+  /* Filter questions by subject */
+  const filteredQuestions = subjectFilter === "all"
+    ? questions
+    : questions.filter((q) => getSubjectForConcept(q.concept_id) === subjectFilter);
+
+  const handleSelectQuestion = useCallback(
+    (q: QuestionSummary) => {
+      setSelectedQ(q);
+      setAttempt(0);
+      setChatHistory([
+        {
+          role: "tutor",
+          content: `Hi ${learnerName.split(" ")[0]}! Let's work on: "${q.prompt}"`,
+          mode: "socratic_hint",
+        },
+      ]);
+      setAnswer("");
+      setSolved(false);
+    },
+    [learnerName],
+  );
+
+  /* Handle guidance quick options */
+  const handleGuidance = useCallback(
+    async (questionType: string, displayText: string) => {
+      setLoading(true);
+      setChatHistory((prev) => [...prev, { role: "learner", content: displayText }]);
+      try {
+        const resp = await postGuidance({
+          learner_id: learnerId,
+          question_type: questionType,
+          subject: subjectFilter !== "all" ? subjectFilter : undefined,
+        });
+        setChatHistory((prev) => [
+          ...prev,
+          { role: "tutor", content: resp.message, mode: "socratic_hint" },
+        ]);
+      } catch {
+        setChatHistory((prev) => [
+          ...prev,
+          { role: "tutor", content: "Something went wrong. Please try again.", mode: "error" },
+        ]);
+      }
+      setLoading(false);
+    },
+    [learnerId, subjectFilter],
+  );
 
   const handleAction = useCallback(
     async (forcedAnswer?: string, hintAttempt?: number) => {
-      if (!selectedQ || loading || !learnerId) return;
+      if (!selectedQ || loading) return;
       setLoading(true);
 
       const isHint = hintAttempt !== undefined;
@@ -111,7 +266,7 @@ export function TutorPage() {
         return;
       }
 
-      const hintLabels = ["Socratic Hint", "Error Explanation", "Worked Step", "Direct Explanation"];
+      const hintLabels = ["Think About It", "What Went Wrong", "Show Me a Step", "Full Solution"];
       const learnerMsg = isHint
         ? `Asked for ${hintLabels[hintAttempt] || "Hint"}`
         : submissionAnswer;
@@ -122,7 +277,7 @@ export function TutorPage() {
         const resp: TutorResponse = await postTutorRespond({
           learner_id: learnerId,
           question_id: selectedQ.id,
-          attempt_number: isHint ? hintAttempt : attempt,
+          attempt_number: isHint ? hintAttempt! : attempt,
           learner_answer: submissionAnswer || undefined,
         });
 
@@ -151,7 +306,7 @@ export function TutorPage() {
           if (!isHint) {
             setAttempt((a) => Math.min(a + 1, 3));
           } else {
-            setAttempt(Math.min(hintAttempt + 1, 3));
+            setAttempt(Math.min(hintAttempt! + 1, 3));
           }
         }
         setAnswer("");
@@ -163,7 +318,7 @@ export function TutorPage() {
       }
       setLoading(false);
     },
-    [selectedQ, attempt, answer, loading],
+    [selectedQ, attempt, answer, loading, learnerId],
   );
 
   return (
@@ -175,12 +330,44 @@ export function TutorPage() {
         <span>PRISM AI Tutor</span>
       </div>
 
-      <label className="mg-learner-input">
-        Learner ID
-        <input value={learnerId} onChange={(event) => setLearnerId(event.target.value)} placeholder="Enter your learner ID" />
-      </label>
+      {/* Learner identity banner */}
+      <div style={{ display: "flex", gap: ".6rem", alignItems: "center", marginBottom: "1rem" }}>
+        <span style={{ fontWeight: 600, fontSize: ".85rem", color: "#2d3436", fontFamily: '"Inter", sans-serif' }}>
+          👤 {learnerName}
+        </span>
+        {learnerId && (
+          <span style={{ fontSize: ".75rem", color: "#636e72", fontFamily: '"Inter", sans-serif' }}>
+            {learnerId}
+          </span>
+        )}
+      </div>
 
-      {/* AI Tutor featured card (Magoosh-style) */}
+      {/* Subject filter pills */}
+      <div style={{ display: "flex", gap: ".4rem", marginBottom: "1.2rem", flexWrap: "wrap" }}>
+        {SUBJECT_FILTERS.map((sf) => (
+          <button
+            key={sf.key}
+            onClick={() => setSubjectFilter(sf.key)}
+            className="mg-pill"
+            style={{
+              cursor: "pointer",
+              background: subjectFilter === sf.key ? "#553285" : "#fff",
+              color: subjectFilter === sf.key ? "#fff" : "#553285",
+              border: `1px solid ${subjectFilter === sf.key ? "#553285" : "#dfe6e9"}`,
+              padding: ".3rem .7rem",
+              fontSize: ".78rem",
+              fontWeight: 600,
+              fontFamily: '"Inter", sans-serif',
+              borderRadius: "1rem",
+              transition: "all .15s ease",
+            }}
+          >
+            {sf.label}
+          </button>
+        ))}
+      </div>
+
+      {/* AI Tutor featured card */}
       {!selectedQ && (
         <div className="mg-featured-card" style={{ marginBottom: "2rem" }}>
           <div className="mg-featured-icon">🎓</div>
@@ -195,25 +382,41 @@ export function TutorPage() {
               color: "#2d3436",
               fontFamily: '"Inter", sans-serif',
             }}>
-              Get Personalized Guidance And Never Get Stuck
+              Your Personal STEM Learning Guide
             </h2>
             <p style={{
               margin: 0, color: "#636e72", fontSize: ".9rem",
               lineHeight: 1.6, fontFamily: '"Inter", sans-serif',
             }}>
-              "Am I on track?"<br />
-              "What lessons should I study next?"<br />
-              "Recommend practice questions based on my performance."
+              Select a question below to practice, or ask the tutor:
             </p>
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginTop: ".8rem" }}>
-              <span style={{
-                color: "#553285", fontWeight: 700, fontSize: ".9rem",
-                fontFamily: '"Inter", sans-serif', cursor: "pointer",
-                textDecoration: "underline",
-              }}>
-                Select a question below to launch ↓
-              </span>
+            <div className="mg-quick-options" style={{ marginTop: ".6rem" }}>
+              {QUICK_OPTIONS.map((opt) => (
+                <button
+                  key={opt.type}
+                  className="mg-quick-option"
+                  onClick={() => handleGuidance(opt.type, opt.text)}
+                  disabled={loading}
+                >
+                  {opt.text}
+                </button>
+              ))}
             </div>
+            {/* Show guidance chat if messages exist without a selected question */}
+            {chatHistory.length > 0 && (
+              <div className="mg-chat-widget" style={{ marginTop: "1rem" }}>
+                <div className="mg-chat-body" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                  {chatHistory.map((msg, idx) => (
+                    <div key={idx}>
+                      <div className={`mg-chat-bubble ${msg.role === "tutor" ? "mg-chat-bubble--tutor" : "mg-chat-bubble--learner"}`}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -223,12 +426,19 @@ export function TutorPage() {
         <section aria-label="Select a question">
           <h2 className="mg-section-title">
             Choose a question to work on
+            {subjectFilter !== "all" && (
+              <span style={{ fontWeight: 400, fontSize: ".85rem", color: "#636e72" }}>
+                {" "}— {SUBJECT_FILTERS.find((f) => f.key === subjectFilter)?.label}
+              </span>
+            )}
           </h2>
           {questionsLoading ? (
             <p style={{ color: "#636e72" }}>Loading questions…</p>
+          ) : filteredQuestions.length === 0 ? (
+            <p style={{ color: "#636e72" }}>No questions available for this subject yet.</p>
           ) : (
             <div className="mg-lesson-list">
-              {questions.map((q, idx) => (
+              {filteredQuestions.map((q, idx) => (
                 <div
                   key={q.id}
                   className="mg-lesson-item"
@@ -288,46 +498,36 @@ export function TutorPage() {
               }}>
                 {selectedQ.prompt}
               </h2>
-
-              {/* Escalation ladder */}
-              <div style={{ display: "flex", gap: ".3rem", flexWrap: "wrap" }}>
-                {Object.entries(MODE_DISPLAY).map(([mode, info]) => {
-                  const isActive = chatHistory.some((m) => m.mode === mode);
-                  return (
-                    <span
-                      key={mode}
-                      className={`mg-pill ${isActive ? "" : ""}`}
-                      style={{
-                        borderColor: isActive ? info.color : "#e8e8e8",
-                        color: isActive ? info.color : "#b2bec3",
-                        background: isActive ? `${info.color}10` : "transparent",
-                        fontSize: ".68rem",
-                      }}
-                    >
-                      {info.icon} {info.label}
-                    </span>
-                  );
-                })}
-              </div>
             </div>
 
-            {/* Hint buttons */}
+
+            {/* Hint buttons with tooltips */}
             {!solved && (
               <div className="mg-hint-row">
-                {HINT_STYLES.map((hint, idx) => (
-                  <button
-                    key={idx}
-                    className="mg-hint-btn"
-                    onClick={() => handleAction(undefined, idx)}
-                    disabled={loading || attempt < idx}
-                    style={{
-                      borderColor: hint.border,
-                      color: hint.color,
-                      background: attempt === idx ? hint.bg : "#fff",
-                    }}
-                  >
-                    {hint.label}
-                  </button>
+                {HINT_BUTTONS.map((hint, idx) => (
+                  <div key={idx} style={{ position: "relative", display: "inline-block" }}>
+                    <button
+                      className="mg-hint-btn"
+                      onClick={() => handleAction(undefined, idx)}
+                      disabled={loading}
+                      style={{
+                        borderColor: hint.border,
+                        color: hint.color,
+                        background: attempt === idx ? hint.bg : "#fff",
+                      }}
+                      title={hint.tooltip}
+                    >
+                      {hint.label}
+                      <span style={{
+                        marginLeft: ".3rem",
+                        fontSize: ".6rem",
+                        opacity: 0.6,
+                        cursor: "help",
+                      }}>
+                        ℹ️
+                      </span>
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -392,19 +592,8 @@ export function TutorPage() {
                     Hi there! How can I help?
                   </p>
                   <p style={{ textAlign: "center", color: "#1bb576", fontSize: ".82rem", fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
-                    Select an option or ask away below
+                    Type your answer below or use a hint button
                   </p>
-                  <div className="mg-quick-options">
-                    {QUICK_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        className="mg-quick-option"
-                        onClick={() => handleAction(opt)}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
                 </>
               )}
 
@@ -422,7 +611,7 @@ export function TutorPage() {
                           color: modeInfo.color,
                           fontFamily: '"Inter", sans-serif',
                         }}>
-                          {modeInfo.icon} {modeInfo.label}
+                          {modeInfo.icon} {modeInfo.userLabel}
                         </span>
                         {msg.isFallback && (
                           <span style={{
@@ -446,31 +635,62 @@ export function TutorPage() {
 
             {/* Input */}
             {!solved && (
-              <div className="mg-chat-input-row">
-                <input
-                  type="text"
-                  className="mg-chat-input"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAction();
-                    }
-                  }}
-                  placeholder="Ask away..."
-                  disabled={loading}
-                  id="tutor-answer-input"
-                />
-                <button
-                  className="mg-chat-send"
-                  onClick={() => handleAction()}
-                  disabled={loading}
-                  id="tutor-submit-btn"
-                >
-                  ➤
-                </button>
-              </div>
+              <>
+                {/* MCQ option buttons */}
+                {selectedQ.options && selectedQ.options.length > 0 && (
+                  <div style={{
+                    display: "flex", flexWrap: "wrap", gap: ".4rem",
+                    padding: ".5rem .8rem", borderTop: "1px solid #f0f0f0",
+                  }}>
+                    {selectedQ.options.map((opt, idx) => {
+                      const letter = String.fromCharCode(65 + idx);
+                      return (
+                        <button
+                          key={idx}
+                          className="mg-btn"
+                          onClick={() => handleAction(letter)}
+                          disabled={loading}
+                          style={{
+                            flex: "1 1 45%",
+                            fontSize: ".78rem",
+                            padding: ".4rem .6rem",
+                            textAlign: "left",
+                            borderColor: "#dfe6e9",
+                            fontFamily: '"Inter", sans-serif',
+                          }}
+                        >
+                          <strong style={{ color: "#553285" }}>{letter}.</strong> {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="mg-chat-input-row">
+                  <input
+                    type="text"
+                    className="mg-chat-input"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAction();
+                      }
+                    }}
+                    placeholder={selectedQ.options ? "Or type A, B, C, D..." : "Type your answer..."}
+                    disabled={loading}
+                    id="tutor-answer-input"
+                  />
+                  <button
+                    className="mg-chat-send"
+                    onClick={() => handleAction()}
+                    disabled={loading}
+                    id="tutor-submit-btn"
+                  >
+                    ➤
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
