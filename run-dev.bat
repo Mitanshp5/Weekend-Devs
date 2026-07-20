@@ -104,27 +104,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: 7. Seed Tutor Analytics data
-echo Seeding Tutor Analytics data...
-pushd "%ROOT_DIR%\backend"
-.venv\Scripts\python.exe -c "from tests.tutor_analytics_fixtures import seed_tutor_analytics_data; seed_tutor_analytics_data()"
-popd
-if errorlevel 1 (
-    echo [WARNING] Failed to seed Tutor Analytics data. Skipping.
-)
+:: 7. Seeding is handled automatically by initialize_database() on first startup
 
 :: 8. Clear Redis auth rate-limit counters (dev only — prevents 429 on login after restarts)
 echo Clearing auth rate-limit counters...
-docker exec weekend-devs-redis-1 redis-cli DEL "rate_limit:login:::1" "rate_limit:register:::1" >nul 2>&1
-
-:: 9. Seed demo student learner accounts (idempotent — safe to run on every startup)
-echo Seeding demo student accounts...
-pushd "%ROOT_DIR%\backend"
-.venv\Scripts\python.exe -m app.seed_learners
-popd
-if errorlevel 1 (
-    echo [WARNING] Failed to seed demo student accounts. Skipping.
-)
+docker compose exec -T redis redis-cli DEL "rate_limit:login:::1" "rate_limit:register:::1" >nul 2>&1
 
 echo.
 echo =========================================

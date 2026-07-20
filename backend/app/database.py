@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+import bcrypt
 import psycopg
 from dotenv import load_dotenv
 from psycopg.rows import dict_row
@@ -18,6 +19,107 @@ SEED_SUBJECTS = (
     (8, "english", "English"),
 )
 
+# Demo learner definitions — single source of truth for all seed data
+_DEMO_LEARNERS = [
+    {
+        "name": "Aanya Sharma",
+        "email": "aanya@prism.demo",
+        "password": "Prism_demo_1",
+        "band": "developing",
+        "description": "Grade-level learner, consistent performer",
+        "mastery": [
+            ("eq.inverse_operations", 0.61, 6, 2),
+            ("num.signed_operations", 0.55, 4, 1),
+            ("math.rational_numbers", 0.48, 3, 0),
+        ],
+    },
+    {
+        "name": "Ravi Kumar",
+        "email": "ravi@prism.demo",
+        "password": "Prism_demo_2",
+        "band": "foundational",
+        "description": "Foundational learner, needs prerequisite support",
+        "mastery": [
+            ("eq.inverse_operations", 0.22, 4, 0),
+            ("num.signed_operations", 0.18, 5, 0),
+            ("sci.crop_production", 0.31, 3, 0),
+        ],
+    },
+    {
+        "name": "Priya Patel",
+        "email": "priya@prism.demo",
+        "password": "Prism_demo_3",
+        "band": "ready_for_extension",
+        "description": "Advanced learner, quick mastery",
+        "mastery": [
+            ("eq.inverse_operations", 0.91, 8, 6),
+            ("eq.multi_step", 0.87, 7, 5),
+            ("math.quadrilaterals", 0.78, 6, 4),
+            ("sci.microorganisms", 0.82, 5, 4),
+        ],
+    },
+    {
+        "name": "Arjun Singh",
+        "email": "arjun@prism.demo",
+        "password": "Prism_demo_4",
+        "band": "developing",
+        "description": "Developing learner, improving steadily",
+        "mastery": [
+            ("eq.inverse_operations", 0.54, 5, 2),
+            ("eq.word_translation", 0.42, 4, 1),
+            ("math.linear_equations", 0.38, 3, 0),
+        ],
+    },
+    {
+        "name": "Meera Iyer",
+        "email": "meera@prism.demo",
+        "password": "Prism_demo_5",
+        "band": "developing",
+        "description": "Grade-level learner, strong in Science",
+        "mastery": [
+            ("sci.crop_production", 0.76, 6, 4),
+            ("sci.microorganisms", 0.71, 5, 3),
+            ("eq.inverse_operations", 0.44, 3, 1),
+        ],
+    },
+    {
+        "name": "Kabir Das",
+        "email": "kabir@prism.demo",
+        "password": "Prism_demo_6",
+        "band": "needs_prerequisite_support",
+        "description": "Foundational learner, struggles with word problems",
+        "mastery": [
+            ("eq.word_translation", 0.15, 6, 0),
+            ("eq.multi_step", 0.20, 5, 0),
+            ("num.signed_operations", 0.28, 4, 0),
+        ],
+    },
+    {
+        "name": "Nisha Reddy",
+        "email": "nisha@prism.demo",
+        "password": "Prism_demo_7",
+        "band": "ready_for_extension",
+        "description": "Advanced learner, excels in English",
+        "mastery": [
+            ("eng.tsunami", 0.93, 7, 6),
+            ("eng.christmas_present", 0.88, 6, 5),
+            ("sci.conservation", 0.74, 5, 3),
+        ],
+    },
+    {
+        "name": "Vikram Joshi",
+        "email": "vikram@prism.demo",
+        "password": "Prism_demo_8",
+        "band": "developing",
+        "description": "Developing learner, inconsistent performance",
+        "mastery": [
+            ("eq.inverse_operations", 0.38, 5, 1),
+            ("num.mul_div_fluency", 0.45, 4, 1),
+            ("math.data_handling", 0.29, 3, 0),
+        ],
+    },
+]
+
 
 def database_url() -> str:
     return os.environ["PRISM_DATABASE_URL"]
@@ -25,6 +127,100 @@ def database_url() -> str:
 
 def connect() -> psycopg.Connection:
     return psycopg.connect(database_url(), row_factory=dict_row)
+
+
+def _seed_demo_data(cursor: psycopg.Cursor) -> None:
+    """Idempotently seed all demo learner accounts, mastery snapshots, teacher summaries,
+    and misconception clusters. Called once from initialize_database()."""
+    seed_emails = [l["email"] for l in _DEMO_LEARNERS]
+
+    # Clear stale analytics for demo accounts (preserves real user data)
+    cursor.execute("DELETE FROM mastery_history WHERE learner_id = ANY(%s)", (seed_emails,))
+    cursor.execute("DELETE FROM teacher_summaries WHERE learner_id = ANY(%s)", (seed_emails,))
+    cursor.execute("DELETE FROM tutor_sessions WHERE learner_id = ANY(%s)", (seed_emails,))
+    cursor.execute("DELETE FROM misconception_clusters WHERE grade = 8")
+
+    for learner in _DEMO_LEARNERS:
+        email = learner["email"]
+        pw_hash = bcrypt.hashpw(
+            learner["password"].encode("utf-8"), bcrypt.gensalt(rounds=10)
+        ).decode("utf-8")
+
+        # Upsert auth_users with description column
+        cursor.execute(
+            """
+            INSERT INTO auth_users (username, email, password, role, is_verified, description)
+            VALUES (%s, %s, %s, 'student', true, %s)
+            ON CONFLICT (email) DO UPDATE
+                SET username = EXCLUDED.username,
+                    password = EXCLUDED.password,
+                    role = 'student',
+                    is_verified = true,
+                    description = EXCLUDED.description,
+                    updated_at = now()
+            """,
+            (learner["name"], email, pw_hash, learner["description"]),
+        )
+
+        # Two mastery snapshots per concept to show growth trajectory
+        for concept_id, p_know, evidence_count, independent_correct in learner["mastery"]:
+            initial_p = max(0.05, p_know - 0.15)
+            cursor.execute(
+                """
+                INSERT INTO mastery_history
+                    (learner_id, concept_id, p_know, evidence_count, independent_correct_count)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (email, concept_id, initial_p, max(1, evidence_count - 2), max(0, independent_correct - 1)),
+            )
+            cursor.execute(
+                """
+                INSERT INTO mastery_history
+                    (learner_id, concept_id, p_know, evidence_count, independent_correct_count)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (email, concept_id, p_know, evidence_count, independent_correct),
+            )
+
+        # Teacher summary
+        top_concept = learner["mastery"][0][0] if learner["mastery"] else "eq.inverse_operations"
+        cursor.execute(
+            """
+            INSERT INTO teacher_summaries
+                (learner_id, grade, band, current_path, current_target_concept,
+                 likely_blocker_concept, blocker_confidence, evidence_summary,
+                 recommended_action)
+            VALUES (%s, 8, %s, 'Grade-Level', %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            (
+                email, learner["band"], top_concept, top_concept, 0.78,
+                learner["description"],
+                "Review concept fundamentals and practice with guided hints.",
+            ),
+        )
+
+    # Seed misconception clusters
+    cluster_data = [
+        (8, "eq.inverse_operations", "inverse_op_sign_error", 5, 12, 0.41, 0.33, 0.12, 0.87,
+         "Use number lines to model inverse operations before introducing symbolic manipulation."),
+        (8, "eq.word_translation", "word_to_equation_gap", 4, 12, 0.33, 0.50, 0.08, 0.79,
+         "Provide sentence-to-equation translation scaffolding before independent practice."),
+        (8, "num.signed_operations", "sign_confusion", 3, 12, 0.25, 0.67, 0.05, 0.71,
+         "Use integer chip models before moving to abstract rules."),
+    ]
+    for row in cluster_data:
+        cursor.execute(
+            """
+            INSERT INTO misconception_clusters
+                (grade, concept_id, error_tag, affected_count, total_active,
+                 recent_incorrect_rate, repeat_error_rate, trend_growth, impact_score,
+                 suggested_intervention)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            row,
+        )
 
 
 def initialize_database() -> None:
@@ -194,6 +390,18 @@ def initialize_database() -> None:
                     for position, concept in enumerate(concepts, start=1)
                 ],
             )
+
+        try:
+            # Ensure auth_users has a description column (managed by FlowWatch)
+            cursor.execute(
+                "ALTER TABLE auth_users ADD COLUMN IF NOT EXISTS description TEXT"
+            )
+            # Seed all demo learner data idempotently
+            _seed_demo_data(cursor)
+        except Exception:
+            # auth_users doesn't exist yet (e.g. FlowWatch not initialised or test DB).
+            # Seeding will succeed on next startup once FlowWatch has run.
+            pass
 
 
 def subjects_for_grade(grade: int) -> list[dict[str, str | int]]:

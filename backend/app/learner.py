@@ -23,7 +23,7 @@ def list_learners() -> dict:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT username, email
+                    SELECT username, email, description
                     FROM auth_users
                     WHERE role = 'student'
                     ORDER BY created_at ASC
@@ -32,24 +32,12 @@ def list_learners() -> dict:
                 )
                 rows = cur.fetchall()
 
-        # Map email-based learner records with descriptions from seed definitions
-        LEARNER_DESCRIPTIONS = {
-            "aanya@prism.demo": "Grade-level learner, consistent performer",
-            "ravi@prism.demo": "Foundational learner, needs prerequisite support",
-            "priya@prism.demo": "Advanced learner, quick mastery",
-            "arjun@prism.demo": "Developing learner, improving steadily",
-            "meera@prism.demo": "Grade-level learner, strong in Science",
-            "kabir@prism.demo": "Foundational learner, struggles with word problems",
-            "nisha@prism.demo": "Advanced learner, excels in English",
-            "vikram@prism.demo": "Developing learner, inconsistent performance",
-        }
-
         learners = [
             {
-                "id": row["email"],  # Use email as learner_id for backend queries
+                "id": row["email"],
                 "name": row["username"] or row["email"].split("@")[0].title(),
                 "email": row["email"],
-                "description": LEARNER_DESCRIPTIONS.get(row["email"], "Student"),
+                "description": row.get("description") or "Student",
             }
             for row in rows
         ]
