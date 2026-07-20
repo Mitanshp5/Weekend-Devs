@@ -58,8 +58,6 @@ export interface QuestionSummary {
   concept_id: string;
   prompt: string;
   difficulty: number;
-  answer_type?: string;
-  options?: string[];
 }
 
 export interface CohortResponse {
@@ -172,56 +170,4 @@ export function fetchClusters(
   grade: number = 8,
 ): Promise<{ grade: number; clusters: ClusterData[] }> {
   return fetchJSON(`/teacher/clusters?grade=${grade}`);
-}
-
-// ---------------------------------------------------------------------------
-// Learner endpoints
-// ---------------------------------------------------------------------------
-
-export interface DemoLearner {
-  id: number;
-  name: string;
-  description: string;
-}
-
-export interface LearnerProgress {
-  learner_id: number;
-  learner_name: string | null;
-  questions_attempted: number;
-  questions_correct: number;
-  hints_used: number;
-  concepts_covered: number;
-  avg_mastery: number;
-  strong_topics: string[];
-  weak_topics: string[];
-}
-
-export function fetchLearners(): Promise<{ learners: DemoLearner[] }> {
-  return fetchJSON("/learners");
-}
-
-export function fetchLearnerProgress(learnerId: number): Promise<LearnerProgress> {
-  return fetchJSON(`/learners/${learnerId}/progress`);
-}
-
-// ---------------------------------------------------------------------------
-// Guidance endpoints
-// ---------------------------------------------------------------------------
-
-export interface GuidanceResponse {
-  question_type: string;
-  message: string;
-  details: Record<string, unknown>;
-}
-
-export function postGuidance(body: {
-  learner_id: string;
-  question_type: string;
-  subject?: string;
-}): Promise<GuidanceResponse> {
-  return fetchJSON("/tutor/guidance", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
 }

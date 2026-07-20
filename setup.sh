@@ -10,7 +10,7 @@ die() { printf '\n[ERROR] %s\n' "$1" >&2; exit 1; }
 ensure_env() {
   if [[ ! -f .env ]]; then
     [[ -f .env.example ]] || die ".env.example is missing from the repository root."
-    log "1/8" "Creating the root .env file from .env.example..."
+    log "1/7" "Creating the root .env file from .env.example..."
     cp .env.example .env
   fi
   local key
@@ -25,7 +25,7 @@ install_brew_package() {
 }
 
 ensure_docker() {
-  log "2/8" "Checking Docker Desktop..."
+  log "2/7" "Checking Docker Desktop..."
   if ! command -v docker >/dev/null 2>&1; then
     if [[ "$(uname -s)" == "Darwin" ]]; then
       command -v brew >/dev/null 2>&1 || die "Docker is missing. Install Docker Desktop or Homebrew, then run this file again."
@@ -59,7 +59,7 @@ ensure_docker() {
 }
 
 ensure_python() {
-  log "3/8" "Checking Python 3.11+..."
+  log "3/7" "Checking Python 3.11+..."
   PYTHON_CMD=""
   for candidate in python3.12 python3 python; do
     if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
@@ -84,7 +84,7 @@ ensure_python() {
 }
 
 ensure_node() {
-  log "4/8" "Checking Node.js and npm..."
+  log "4/7" "Checking Node.js and npm..."
   if ! command -v npm >/dev/null 2>&1; then
     if [[ "$(uname -s)" == "Darwin" ]]; then
       install_brew_package node
@@ -99,16 +99,16 @@ ensure_node() {
 }
 
 start_database() {
-  log "5/8" "Downloading and starting PostgreSQL and Redis..."
-  docker compose pull postgres redis || log "warning" "Container image pull failed, attempting startup with cached images..."
-  if ! docker compose up -d postgres redis; then
+  log "5/7" "Downloading and starting PostgreSQL..."
+  docker compose pull postgres || die "PostgreSQL image download failed. Check Docker and internet access."
+  if ! docker compose up -d --wait postgres; then
     docker compose logs --tail=40 postgres || true
-    die "PostgreSQL / Redis containers failed to start."
+    die "PostgreSQL did not become healthy."
   fi
 }
 
 setup_backend() {
-  log "6/8" "Creating the backend virtual environment and installing dependencies..."
+  log "6/7" "Creating the backend virtual environment and installing dependencies..."
   VENV_DIR="$ROOT_DIR/backend/.venv"
   BACKEND_PYTHON="$VENV_DIR/bin/python"
   if [[ ! -x "$BACKEND_PYTHON" ]]; then
@@ -124,17 +124,12 @@ initialize_database() {
 }
 
 setup_frontend() {
-  log "7/8" "Installing frontend dependencies..."
+  log "7/7" "Installing frontend dependencies..."
   if [[ -f "$ROOT_DIR/frontend/package-lock.json" ]]; then
     (cd "$ROOT_DIR/frontend" && npm ci --no-audit --no-fund)
   else
     (cd "$ROOT_DIR/frontend" && npm install --no-audit --no-fund)
   fi
-}
-
-setup_sidecar() {
-  log "8/8" "Installing and updating FlowWatch sidecar dependencies..."
-  (cd "$ROOT_DIR/flowwatch-sidecar" && npm install --no-audit --no-fund && npm install @pranshulsoni/flowwatch@latest --no-audit --no-fund)
 }
 
 verify_project() {
@@ -152,7 +147,6 @@ start_database
 setup_backend
 initialize_database
 setup_frontend
-setup_sidecar
 verify_project
 
 printf '\n=========================================\nPRISM setup complete and verified!\n\nTo start the development servers, run:\n  ./run-dev.sh\n=========================================\n'

@@ -1,13 +1,14 @@
-"""Compatibility hook for Tutor Analytics table setup.
+"""Tutor Analytics database-table initialization.
 
-Schema creation and approved development seeding are launcher responsibilities:
-`setup.*` and `run-dev.*` call `app.database.initialize_database()` before API
-processes start. Request handlers must not initialize or seed the database.
+Learner evidence, tutoring sessions, and cohort analytics are persisted only from
+real API activity. This module never creates fabricated learner records.
 """
 
 from __future__ import annotations
 
+from app.database import initialize_database
+
 
 def initialize_tutor_analytics_tables() -> None:
-    """Retained for existing callers; initialization happens before app startup."""
-    return None
+    """Create Tutor Analytics tables if they do not exist (idempotent)."""
+    initialize_database()
