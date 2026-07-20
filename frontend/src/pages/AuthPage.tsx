@@ -43,9 +43,12 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
         throw new Error(data.error?.message || data.error || "Authentication failed.");
       }
 
-      // Store auth tokens and basic user info
-      let user = data.user || { email, username: username || email.split("@")[0] };
-      const token = data.tokens?.accessToken || "demo-jwt-token";
+      const token = data.tokens?.accessToken;
+      let user = data.user;
+
+      if (!token || !user) {
+        throw new Error("Authentication failed: No valid token or user returned by server.");
+      }
 
       // 1. Determine role from login response first, fallback to sidecar profile API or localStorage
       let userRole: "student" | "teacher" | undefined =

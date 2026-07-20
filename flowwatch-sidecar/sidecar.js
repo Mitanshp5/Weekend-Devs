@@ -163,6 +163,71 @@ app.post("/api/user/role", async (req, res) => {
   }
 });
 
+import crypto from "crypto";
+
+function verifyJwt(token, secret) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, signatureB64] = parts;
+
+  try {
+    const expectedSig = crypto
+      .createHmac("sha256", secret)
+      .update(`${headerB64}.${payloadB64}`)
+      .digest("base64url");
+
+    if (signatureB64 !== expectedSig) {
+      const normSig = expectedSig.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+      if (signatureB64.replace(/=/g, "") !== normSig) {
+        return null;
+      }
+    }
+
+    const payloadJson = Buffer.from(payloadB64, "base64url").toString("utf-8");
+    const payload = JSON.parse(payloadJson);
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+app.post("/api/auth/verify", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : req.body?.token;
+
+    if (!token) {
+      res.status(401).json({ error: "No authentication token provided" });
+      return;
+    }
+
+    const payload = verifyJwt(token, authConfig.jwtSecret);
+    if (!payload || !payload.userId) {
+      res.status(401).json({ error: "Invalid or expired authentication token" });
+      return;
+    }
+
+    const rows = await fw.query(
+      "SELECT id, username, email, role, is_verified, created_at FROM auth_users WHERE id = $1",
+      [payload.userId]
+    );
+
+    if (!rows || rows.length === 0) {
+      res.status(404).json({ error: "User account not found" });
+      return;
+    }
+
+    res.json({ valid: true, user: rows[0], payload });
+  } catch (err) {
+    console.error("[Auth API Error] Failed to verify authentication token:", err.message);
+    res.status(500).json({ error: "Failed to verify authentication token" });
+  }
+});
+
 app.get("/api/user/profile", async (req, res) => {
   try {
     const email = req.query.email;
