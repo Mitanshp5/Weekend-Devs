@@ -113,7 +113,11 @@ if errorlevel 1 (
     echo [WARNING] Failed to seed Tutor Analytics data. Skipping.
 )
 
-:: 8. Seed demo student learner accounts (idempotent — safe to run on every startup)
+:: 8. Clear Redis auth rate-limit counters (dev only — prevents 429 on login after restarts)
+echo Clearing auth rate-limit counters...
+docker exec weekend-devs-redis-1 redis-cli DEL "rate_limit:login:::1" "rate_limit:register:::1" >nul 2>&1
+
+:: 9. Seed demo student learner accounts (idempotent — safe to run on every startup)
 echo Seeding demo student accounts...
 pushd "%ROOT_DIR%\backend"
 .venv\Scripts\python.exe -m app.seed_learners
