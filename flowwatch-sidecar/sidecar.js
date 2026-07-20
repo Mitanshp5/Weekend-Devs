@@ -20,27 +20,9 @@ if (!dbUrl) {
 
 const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
-// Load Google OAuth secret JSON if present
-let googleClientId = process.env.GOOGLE_CLIENT_ID || "";
-let googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
-
-const secretsDir = path.resolve(rootDir, "secrets");
-if (fs.existsSync(secretsDir)) {
-  const secretFiles = fs.readdirSync(secretsDir).filter((f) => f.endsWith(".json"));
-  if (secretFiles.length > 0) {
-    try {
-      const secretPath = path.join(secretsDir, secretFiles[0]);
-      const secretData = JSON.parse(fs.readFileSync(secretPath, "utf-8"));
-      if (secretData.web) {
-        googleClientId = secretData.web.client_id || googleClientId;
-        googleClientSecret = secretData.web.client_secret || googleClientSecret;
-        console.log(`[Auth] Loaded Google OAuth credentials from secrets/${secretFiles[0]}`);
-      }
-    } catch (e) {
-      console.warn("[Auth Warning] Could not parse secrets JSON file:", e.message);
-    }
-  }
-}
+// Read Google OAuth credentials directly from .env environment variables
+const googleClientId = process.env.GOOGLE_CLIENT_ID || "";
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
 
 const authConfig = {
   jwtSecret: process.env.JWT_SECRET || "prism_flowwatch_super_secret_jwt_key_2026_prism",
