@@ -24,6 +24,9 @@ fi
 if [[ ! -d "frontend/node_modules" ]]; then
   die "frontend/node_modules is missing. Please run ./setup.sh first!"
 fi
+if [[ ! -d "flowwatch-sidecar/node_modules" ]]; then
+  die "flowwatch-sidecar/node_modules is missing. Please run ./setup.sh first!"
+fi
 
 # 3. Check Docker status
 if ! command -v docker >/dev/null 2>&1; then
@@ -51,33 +54,37 @@ if ! docker info >/dev/null 2>&1; then
   docker info >/dev/null 2>&1 || die "Docker did not start in time. Make sure it is running and try again."
 fi
 
-# 4. Start PostgreSQL container
-log "database" "Starting PostgreSQL container..."
-docker compose up -d postgres
+# 4. Start PostgreSQL and Redis containers
+log "database" "Starting PostgreSQL and Redis containers..."
+docker compose up -d postgres redis
 
-# 5. Launch Backend and Frontend dev servers
-log "start" "Starting the backend and frontend dev servers..."
+# 5. Launch Backend, Frontend, and FlowWatch sidecar dev servers
+log "start" "Starting the backend, frontend, and sidecar dev servers..."
 BACKEND_PYTHON="$ROOT_DIR/backend/.venv/bin/python"
 
 (cd "$ROOT_DIR/backend" && exec "$BACKEND_PYTHON" -m uvicorn app.main:app --reload) &
 BACKEND_PID=$!
 (cd "$ROOT_DIR/frontend" && exec npm run dev) &
 FRONTEND_PID=$!
+(cd "$ROOT_DIR/flowwatch-sidecar" && exec npm start) &
+SIDECAR_PID=$!
 
 cleanup() {
   printf '\nStopping development servers...\n'
-  kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
+  kill "$BACKEND_PID" "$FRONTEND_PID" "$SIDECAR_PID" 2>/dev/null || true
 }
 trap cleanup INT TERM EXIT
 
 # 6. Health check wait
 for _ in {1..30}; do
   if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
-    printf '\n=========================================\nPRISM is running!\nFrontend: http://localhost:5173\nBackend:  http://127.0.0.1:8000\nAPI docs: http://127.0.0.1:8000/docs\n\nPress Ctrl+C to stop both servers.\n=========================================\n'
-    wait
-    return
+    if curl --silent --fail http://127.0.0.1:9400/api/health >/dev/null 2>&1; then
+      printf '\n=========================================\nPRISM is running!\nFrontend:          http://localhost:5173\nBackend:           http://127.0.0.1:8000\nAPI docs:          http://127.0.0.1:8000/docs\nFlowWatch Sidecar: http://localhost:9400\nFlowWatch Ops:     http://localhost:9400/ops\n\nPress Ctrl+C to stop all servers.\n=========================================\n'
+      wait
+      return
+    fi
   fi
   sleep 1
 done
 
-die "The backend health check did not respond. Check the server output above."
+die "The backend or FlowWatch sidecar health check did not respond."
