@@ -1,14 +1,14 @@
 # PRISM Demo Learners
 
-> Temporary dummy identities for prototyping. These will be replaced by real auth in production.
+Pre-seeded student accounts for prototyping and testing. Credentials are documented in [users.md](file:///c:/Users/Pranshul%20Soni/Documents/Projects/Hackathons/Weekend-Devs/users.md).
 
-| ID  | Name         | Description                                        |
-| --- | ------------ | -------------------------------------------------- |
-| 1   | Aanya Sharma | Grade-level learner, consistent performer          |
-| 2   | Ravi Kumar   | Foundational learner, needs prerequisite support   |
-| 3   | Priya Patel  | Advanced learner, quick mastery                    |
-| 4   | Arjun Singh  | Developing learner, improving steadily             |
-| 5   | Meera Iyer   | Grade-level learner, strong in Science             |
-| 6   | Kabir Das    | Foundational learner, struggles with word problems |
-| 7   | Nisha Reddy  | Advanced learner, excels in English                |
-| 8   | Vikram Joshi | Developing learner, inconsistent performance       |
+| ID  | Name         | Email Address      | Password       | Performance Profile                                |
+| --- | ------------ | ------------------ | -------------- | -------------------------------------------------- |
+| 1   | Aanya Sharma | `aanya@prism.demo` | `Prism_demo_1` | Grade-level learner, consistent performer          |
+| 2   | Ravi Kumar   | `ravi@prism.demo`  | `Prism_demo_2` | Foundational learner, needs prerequisite support   |
+| 3   | Priya Patel  | `priya@prism.demo` | `Prism_demo_3` | Advanced learner, quick mastery                    |
+| 4   | Arjun Singh  | `arjun@prism.demo` | `Prism_demo_4` | Developing learner, improving steadily             |
+| 5   | Meera Iyer   | `meera@prism.demo` | `Prism_demo_5` | Grade-level learner, strong in Science             |
+| 6   | Kabir Das    | `kabir@prism.demo` | `Prism_demo_6` | Foundational learner, struggles with word problems |
+| 7   | Nisha Reddy  | `nisha@prism.demo` | `Prism_demo_7` | Advanced learner, excels in English                |
+| 8   | Vikram Joshi | `vikram@prism.demo` | `Prism_demo_8` | Developing learner, inconsistent performance       |
