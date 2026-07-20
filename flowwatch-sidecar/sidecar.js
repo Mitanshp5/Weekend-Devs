@@ -197,17 +197,18 @@ app.post("/api/auth/verify", async (req, res) => {
       return;
     }
 
-    const rows = await fw.query(
+    const queryResult = await fw.query(
       "SELECT id, username, email, role, is_verified, created_at FROM auth_users WHERE id = $1",
       [payload.userId]
     );
+    const userRows = Array.isArray(queryResult) ? queryResult : (queryResult?.rows || []);
 
-    if (!rows || rows.length === 0) {
+    if (userRows.length === 0) {
       res.status(404).json({ error: "User account not found" });
       return;
     }
 
-    res.json({ valid: true, user: rows[0], payload });
+    res.json({ valid: true, user: userRows[0], payload });
   } catch (err) {
     console.error("[Auth API Error] Failed to verify authentication token:", err.message);
     res.status(500).json({ error: "Failed to verify authentication token" });
@@ -223,17 +224,18 @@ app.get("/api/user/profile", async (req, res) => {
     }
 
     // Query database directly for fresh user profile
-    const rows = await fw.query(
+    const queryResult = await fw.query(
       "SELECT id, username, email, role, is_verified, created_at FROM auth_users WHERE email = $1",
       [email]
     );
+    const userRows = Array.isArray(queryResult) ? queryResult : (queryResult?.rows || []);
 
-    if (!rows || rows.length === 0) {
+    if (userRows.length === 0) {
       res.status(404).json({ error: "User profile not found" });
       return;
     }
 
-    res.json({ user: rows[0] });
+    res.json({ user: userRows[0] });
   } catch (err) {
     console.error("[Auth API Error] Failed to fetch user profile:", err.message);
     res.status(500).json({ error: "Failed to fetch user profile" });
