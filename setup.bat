@@ -193,9 +193,14 @@ if not "!RESULT!"=="0" (
 goto :setup_sidecar
 
 :setup_sidecar
-echo [8/8] Installing FlowWatch sidecar dependencies...
+echo [8/8] Installing and updating FlowWatch sidecar dependencies...
 pushd "%ROOT_DIR%\flowwatch-sidecar"
 call "%NPM_CMD%" install --no-audit --no-fund
+if errorlevel 1 (
+    popd
+    goto :failed
+)
+call "%NPM_CMD%" install @pranshulsoni/flowwatch@latest --no-audit --no-fund
 set "RESULT=!ERRORLEVEL!"
 popd
 if not "!RESULT!"=="0" (
