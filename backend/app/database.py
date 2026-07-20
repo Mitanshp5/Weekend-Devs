@@ -405,7 +405,6 @@ def initialize_database() -> None:
 
 
 def subjects_for_grade(grade: int) -> list[dict[str, str | int]]:
-    initialize_database()
     with connect() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -423,7 +422,6 @@ def subjects_for_grade(grade: int) -> list[dict[str, str | int]]:
 
 
 def units_for_subject(grade: int, subject_slug: str) -> dict[str, object] | None:
-    initialize_database()
     with connect() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -448,7 +446,6 @@ def units_for_subject(grade: int, subject_slug: str) -> dict[str, object] | None
 
 
 def concepts_for_unit(unit_slug: str) -> list[dict[str, str | int]] | None:
-    initialize_database()
     with connect() as connection:
         with connection.cursor() as cursor:
             cursor.execute("SELECT slug FROM units WHERE slug = %s", (unit_slug,))
