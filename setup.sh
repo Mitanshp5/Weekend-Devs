@@ -118,6 +118,11 @@ setup_backend() {
   (cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -m pip install -e '.[dev]')
 }
 
+initialize_database() {
+  log "database" "Initializing PostgreSQL schema and idempotent seed data..."
+  (cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -c 'from app.database import initialize_database; initialize_database()')
+}
+
 setup_frontend() {
   log "7/8" "Installing frontend dependencies..."
   if [[ -f "$ROOT_DIR/frontend/package-lock.json" ]]; then
@@ -145,6 +150,7 @@ ensure_python
 ensure_node
 start_database
 setup_backend
+initialize_database
 setup_frontend
 setup_sidecar
 verify_project
