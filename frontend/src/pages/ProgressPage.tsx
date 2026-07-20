@@ -13,23 +13,26 @@ import { DonutChart } from "../components/DonutChart";
 import {
   fetchProgress,
   fetchConceptEvidence,
+  fetchLearners,
+  type DemoLearner,
   type MasteryState,
   type TimelineEntry,
 } from "../api/tutorAnalytics";
 import { CONCEPT_NAMES } from "./TutorPage";
 
 const SUBJECT_MAP: Record<string, string> = {
+  "math.": "Math",
   "num.": "Math",
   "eq.": "Math",
-  sci: "Science",
-  eng: "English",
+  "sci.": "Science",
+  "eng.": "English",
 };
 
 function getSubject(conceptId: string): string {
   for (const [prefix, subject] of Object.entries(SUBJECT_MAP)) {
     if (conceptId.startsWith(prefix)) return subject;
   }
-  return "Math";
+  return "Other";
 }
 
 interface SubjectAgg {
@@ -68,11 +71,26 @@ export function ProgressPage() {
   const [concepts, setConcepts] = useState<MasteryState[]>([]);
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
-  const [learnerId, setLearnerId] = useState(() => new URLSearchParams(window.location.search).get("learner") ?? "");
+  const [learners, setLearners] = useState<DemoLearner[]>([]);
+  const STORAGE_KEY = "prism_selected_learner";
+  const [learnerId, setLearnerId] = useState(() => localStorage.getItem(STORAGE_KEY) ?? "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const timelineRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    fetchLearners()
+      .then((data) => {
+        setLearners(data.learners);
+        if (!learnerId && data.learners.length > 0) {
+          const defaultId = String(data.learners[0].id);
+          setLearnerId(defaultId);
+          localStorage.setItem(STORAGE_KEY, defaultId);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!learnerId.trim()) {
@@ -123,9 +141,30 @@ export function ProgressPage() {
         <span>Analytics</span>
       </div>
 
-      <label className="mg-learner-input">
-        Learner ID
-        <input value={learnerId} onChange={(event) => setLearnerId(event.target.value)} placeholder="Enter your learner ID" />
+      <label className="mg-learner-input" style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+        <span style={{ fontWeight: 600, fontSize: ".85rem", color: "#2d3436" }}>👤 Learner</span>
+        <select
+          value={learnerId}
+          onChange={(e) => {
+            setLearnerId(e.target.value);
+            localStorage.setItem(STORAGE_KEY, e.target.value);
+          }}
+          style={{
+            padding: ".4rem .6rem",
+            borderRadius: ".4rem",
+            border: "1px solid #dfe6e9",
+            fontSize: ".85rem",
+            minWidth: "180px",
+            cursor: "pointer",
+          }}
+        >
+          <option value="">Select a student...</option>
+          {learners.map((l) => (
+            <option key={l.id} value={String(l.id)}>
+              {l.id}. {l.name}
+            </option>
+          ))}
+        </select>
       </label>
 
       <h1 style={{ maxWidth: "20ch", fontSize: "clamp(2rem, 4vw, 3rem)" }}>
