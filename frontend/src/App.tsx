@@ -3,8 +3,10 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 
 import "./App.css";
 import { DashboardShell } from "./components/DashboardShell";
+import { AuthPage } from "./pages/AuthPage";
 import { CatalogPage } from "./pages/CatalogPage";
 import { DiagnosticPage } from "./pages/DiagnosticPage";
+import { OAuthCallback } from "./pages/OAuthCallback";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { ProgressPage } from "./pages/ProgressPage";
 import { TeacherDashboardPage } from "./pages/TeacherDashboardPage";
@@ -14,18 +16,34 @@ import { SubjectPathPage } from "./pages/SubjectPathPage";
 
 function AppRoutes() {
   const location = useLocation();
-  const isDashboard = location.pathname !== "/" && location.pathname !== "/diagnostic";
-  const rootKey = isDashboard ? "dashboard" : location.pathname;
+  const isStandAlone =
+    location.pathname === "/" ||
+    location.pathname === "/diagnostic" ||
+    location.pathname === "/auth" ||
+    location.pathname.startsWith("/oauth");
+
+  const rootKey = isStandAlone ? location.pathname : "dashboard";
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={rootKey}>
         <Route path="/" element={<StartPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/diagnostic" element={<DiagnosticPage />} />
         <Route element={<DashboardShell />}>
           <Route path="/learn" element={<CatalogPage />} />
           <Route path="/learn/:subjectSlug" element={<SubjectPathPage />} />
-          <Route path="/lesson/:lessonId" element={<PlaceholderPage eyebrow="Lesson" title="Focused learning block" description="The active micro-lesson and embedded practice will live here." />} />
+          <Route
+            path="/lesson/:lessonId"
+            element={
+              <PlaceholderPage
+                eyebrow="Lesson"
+                title="Focused learning block"
+                description="The active micro-lesson and embedded practice will live here."
+              />
+            }
+          />
           <Route path="/tutor" element={<TutorPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/teacher" element={<TeacherDashboardPage />} />

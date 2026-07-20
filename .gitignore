@@ -4,6 +4,8 @@ graphify-out/
 .env.*
 .fw.env
 *.env
+secrets/
+secrets/*
 !*.example
 node_modules/
 **/node_modules/

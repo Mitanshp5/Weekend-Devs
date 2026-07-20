@@ -14,8 +14,26 @@ export function StartPage() {
             PRISM turns a learner response into visible evidence, a focused concept gap, and an explainable next action.
           </p>
           <div className="hero-action">
-            <Link className="primary-action" to="/diagnostic">Start diagnostic</Link>
-            <p>Begin with a short check-in. You can see the reasoning behind every recommendation.</p>
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+              <Link className="primary-action" to="/diagnostic">Start diagnostic</Link>
+              <Link
+                to="/auth"
+                style={{
+                  padding: "0.75rem 1.25rem",
+                  borderRadius: "14px",
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  color: "#f4f7ef",
+                  background: "rgba(23, 58, 44, 0.8)",
+                  border: "1px solid rgba(145, 221, 196, 0.3)",
+                  textDecoration: "none",
+                  transition: "all 0.2s"
+                }}
+              >
+                Sign In / Sign Up
+              </Link>
+            </div>
+            <p>Begin with a short check-in or log in as a Student or Teacher.</p>
           </div>
         </div>
         <figure className="hero-art">
