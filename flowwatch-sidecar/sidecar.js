@@ -171,11 +171,10 @@ app.get("/api/user/profile", async (req, res) => {
       return;
     }
 
-    // Use FlowWatch queryCache to cache user profile in Redis (TTL: 300s)
-    const rows = await fw.queryCache(
+    // Query database directly for fresh user profile
+    const rows = await fw.query(
       "SELECT id, username, email, role, is_verified, created_at FROM auth_users WHERE email = $1",
-      [email],
-      300
+      [email]
     );
 
     if (!rows || rows.length === 0) {

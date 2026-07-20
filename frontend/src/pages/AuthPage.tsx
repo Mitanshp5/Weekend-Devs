@@ -47,21 +47,25 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
       let user = data.user || { email, username: username || email.split("@")[0] };
       const token = data.tokens?.accessToken || "demo-jwt-token";
 
-      // 1. Fetch persistent user profile from PostgreSQL / Redis cache via FlowWatch API
-      let userRole: "student" | "teacher" | undefined = undefined;
-      try {
-        const profileRes = await fetch(`${SIDECAR_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`);
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          if (profileData.user) {
-            user = { ...user, ...profileData.user };
-            if (profileData.user.role === "student" || profileData.user.role === "teacher") {
-              userRole = profileData.user.role;
+      // 1. Determine role from login response first, fallback to sidecar profile API or localStorage
+      let userRole: "student" | "teacher" | undefined =
+        user.role === "student" || user.role === "teacher" ? user.role : undefined;
+
+      if (!userRole) {
+        try {
+          const profileRes = await fetch(`${SIDECAR_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`);
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (profileData.user) {
+              user = { ...user, ...profileData.user };
+              if (profileData.user.role === "student" || profileData.user.role === "teacher") {
+                userRole = profileData.user.role;
+              }
             }
           }
+        } catch (e) {
+          console.warn("[Auth Warning] Could not fetch profile from sidecar cache:", e);
         }
-      } catch (e) {
-        console.warn("[Auth Warning] Could not fetch profile from sidecar cache:", e);
       }
 
       // 2. Fallback check local storage if offline
@@ -81,18 +85,20 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
         }
       }
 
+      const finalUser = { ...user, role: userRole };
+
       // Save user session
       try {
         if (typeof window !== "undefined" && window.localStorage) {
           window.localStorage.setItem("prism_token", token);
-          window.localStorage.setItem("prism_user", JSON.stringify({ ...user, role: userRole }));
+          window.localStorage.setItem("prism_user", JSON.stringify(finalUser));
         }
       } catch (e) {
         // Ignore
       }
 
       if (onLoginSuccess) {
-        onLoginSuccess(user, userRole);
+        onLoginSuccess(finalUser, userRole);
       }
 
       // 3. Skip onboarding if role is already stored in database. Otherwise, show onboarding screen.
