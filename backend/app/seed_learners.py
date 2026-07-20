@@ -1,26 +1,24 @@
 """Seed demo student accounts and mastery profiles for PRISM.
 
+Inserts users directly into PostgreSQL (bypassing the sidecar rate limiter)
+using the same bcrypt hashing the FlowWatch auth module uses.
+
 Run via run-dev.bat automatically, or manually:
     backend/.venv/Scripts/python.exe -m app.seed_learners
 """
 
 from __future__ import annotations
 
-import urllib.request
-import urllib.error
-import json
-import os
+import bcrypt
 
 from app.database import connect, initialize_database
 
-SIDECAR_URL = "http://localhost:9400"
-
-# Seed learner definitions: (name, email, password, band, mastery profiles per concept)
+# Seed learner definitions
 SEED_LEARNERS = [
     {
         "name": "Aanya Sharma",
         "email": "aanya@prism.demo",
-        "password": "prism_demo_1",
+        "password": "Prism_demo_1",
         "band": "developing",
         "description": "Grade-level learner, consistent performer",
         "mastery": [
@@ -32,7 +30,7 @@ SEED_LEARNERS = [
     {
         "name": "Ravi Kumar",
         "email": "ravi@prism.demo",
-        "password": "prism_demo_2",
+        "password": "Prism_demo_2",
         "band": "foundational",
         "description": "Foundational learner, needs prerequisite support",
         "mastery": [
@@ -44,7 +42,7 @@ SEED_LEARNERS = [
     {
         "name": "Priya Patel",
         "email": "priya@prism.demo",
-        "password": "prism_demo_3",
+        "password": "Prism_demo_3",
         "band": "ready_for_extension",
         "description": "Advanced learner, quick mastery",
         "mastery": [
@@ -57,7 +55,7 @@ SEED_LEARNERS = [
     {
         "name": "Arjun Singh",
         "email": "arjun@prism.demo",
-        "password": "prism_demo_4",
+        "password": "Prism_demo_4",
         "band": "developing",
         "description": "Developing learner, improving steadily",
         "mastery": [
@@ -69,7 +67,7 @@ SEED_LEARNERS = [
     {
         "name": "Meera Iyer",
         "email": "meera@prism.demo",
-        "password": "prism_demo_5",
+        "password": "Prism_demo_5",
         "band": "developing",
         "description": "Grade-level learner, strong in Science",
         "mastery": [
@@ -81,7 +79,7 @@ SEED_LEARNERS = [
     {
         "name": "Kabir Das",
         "email": "kabir@prism.demo",
-        "password": "prism_demo_6",
+        "password": "Prism_demo_6",
         "band": "needs_prerequisite_support",
         "description": "Foundational learner, struggles with word problems",
         "mastery": [
@@ -93,7 +91,7 @@ SEED_LEARNERS = [
     {
         "name": "Nisha Reddy",
         "email": "nisha@prism.demo",
-        "password": "prism_demo_7",
+        "password": "Prism_demo_7",
         "band": "ready_for_extension",
         "description": "Advanced learner, excels in English",
         "mastery": [
@@ -105,7 +103,7 @@ SEED_LEARNERS = [
     {
         "name": "Vikram Joshi",
         "email": "vikram@prism.demo",
-        "password": "prism_demo_8",
+        "password": "Prism_demo_8",
         "band": "developing",
         "description": "Developing learner, inconsistent performance",
         "mastery": [
@@ -117,79 +115,45 @@ SEED_LEARNERS = [
 ]
 
 
-def _sidecar_post(path: str, payload: dict) -> dict | None:
-    """POST JSON to the FlowWatch sidecar, return parsed response or None."""
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        f"{SIDECAR_URL}{path}",
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        # 400 = user already exists — treat as success
-        if e.code == 400 and ("already" in body.lower() or "exists" in body.lower() or "duplicate" in body.lower()):
-            return {"already_exists": True}
-        print(f"  [HTTP {e.code}] {path}: {body[:120]}")
-        return None
-    except Exception as exc:
-        print(f"  [Error] {path}: {exc}")
-        return None
-
-
 def seed_learner_accounts() -> None:
-    """Register seed student accounts via the sidecar and insert mastery profiles."""
+    """Insert seed student accounts directly into PostgreSQL and seed mastery profiles."""
     initialize_database()
 
-    print("[Seed] Registering demo student accounts and inserting mastery profiles...")
+    seed_emails = [l["email"] for l in SEED_LEARNERS]
+
+    print("[Seed] Upserting demo student accounts and mastery profiles...")
 
     with connect() as conn:
         with conn.cursor() as cur:
-            # Delete any existing seed mastery/session data for these emails so re-runs are idempotent
-            seed_emails = [l["email"] for l in SEED_LEARNERS]
-            cur.execute(
-                "DELETE FROM mastery_history WHERE learner_id = ANY(%s)",
-                (seed_emails,),
-            )
-            cur.execute(
-                "DELETE FROM teacher_summaries WHERE learner_id = ANY(%s)",
-                (seed_emails,),
-            )
-            cur.execute(
-                "DELETE FROM tutor_sessions WHERE learner_id = ANY(%s)",
-                (seed_emails,),
-            )
+            # Clear old mastery/session/summary data for these seed accounts (idempotent)
+            cur.execute("DELETE FROM mastery_history WHERE learner_id = ANY(%s)", (seed_emails,))
+            cur.execute("DELETE FROM teacher_summaries WHERE learner_id = ANY(%s)", (seed_emails,))
+            cur.execute("DELETE FROM tutor_sessions WHERE learner_id = ANY(%s)", (seed_emails,))
 
-    for learner in SEED_LEARNERS:
-        email = learner["email"]
+            for learner in SEED_LEARNERS:
+                email = learner["email"]
 
-        # 1. Register via FlowWatch Auth (idempotent — 400 if already exists)
-        reg_result = _sidecar_post("/auth/register", {
-            "email": email,
-            "password": learner["password"],
-            "username": learner["name"],
-        })
-        if reg_result is None:
-            print(f"  [SKIP] Could not register {email} — sidecar may be down.")
-            continue
-        if reg_result.get("already_exists"):
-            print(f"  [EXISTS] {email}")
-        else:
-            print(f"  [REGISTERED] {email}")
+                # Hash password the same way FlowWatch does (bcrypt, cost factor 10)
+                pw_hash = bcrypt.hashpw(learner["password"].encode("utf-8"), bcrypt.gensalt(rounds=10)).decode("utf-8")
 
-        # 2. Assign student role
-        _sidecar_post("/api/user/role", {"email": email, "role": "student"})
+                # Upsert auth_users — insert or update role/username if already exists
+                cur.execute(
+                    """
+                    INSERT INTO auth_users (username, email, password, role, is_verified)
+                    VALUES (%s, %s, %s, 'student', true)
+                    ON CONFLICT (email) DO UPDATE
+                        SET username = EXCLUDED.username,
+                            password = EXCLUDED.password,
+                            role = 'student',
+                            is_verified = true,
+                            updated_at = now()
+                    """,
+                    (learner["name"], email, pw_hash),
+                )
+                print(f"  [UPSERTED] {email}")
 
-        # 3. Insert mastery history and teacher summary with connect()
-        with connect() as conn:
-            with conn.cursor() as cur:
-                # Insert mastery history entries (multiple p_know snapshots per concept)
+                # Insert mastery history (two snapshots per concept to show growth)
                 for concept_id, p_know, evidence_count, independent_correct in learner["mastery"]:
-                    # Insert two snapshots to simulate growth
                     initial_p = max(0.05, p_know - 0.15)
                     cur.execute(
                         """
@@ -229,8 +193,7 @@ def seed_learner_accounts() -> None:
                         "Review concept fundamentals and practice with guided hints.",
                     ),
                 )
-
-        print(f"  [PROFILE] {email} — {learner['band']} ({len(learner['mastery'])} concepts seeded)")
+                print(f"  [PROFILE]  {email} — {learner['band']} ({len(learner['mastery'])} concepts)")
 
     print("[Seed] Done! 8 demo student accounts ready.")
 
