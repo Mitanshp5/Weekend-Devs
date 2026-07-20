@@ -128,8 +128,8 @@ setup_frontend() {
 }
 
 setup_sidecar() {
-  log "8/8" "Installing FlowWatch sidecar dependencies..."
-  (cd "$ROOT_DIR/flowwatch-sidecar" && npm install --no-audit --no-fund)
+  log "8/8" "Installing and updating FlowWatch sidecar dependencies..."
+  (cd "$ROOT_DIR/flowwatch-sidecar" && npm install --no-audit --no-fund && npm install @pranshulsoni/flowwatch@latest --no-audit --no-fund)
 }
 
 verify_project() {
