@@ -17,7 +17,6 @@ from app.database import connect
 from app.tutor_analytics_models import initialize_tutor_analytics_tables
 from app.scoring import score_numeric_answer
 from app.mastery import update_mastery
-from app.question_bank import ALL_SUBJECT_QUESTIONS
 
 router = APIRouter(prefix="/api/tutor", tags=["tutor"])
 
@@ -256,7 +255,7 @@ class TutorRequest(BaseModel):
 @router.get("/fallback/{question_id}")
 def get_fallback(question_id: str, attempt: int = 0, error_tag: str | None = None) -> dict:
     """Return the authored deterministic tutor response (no LLM)."""
-    question = _MERGED_BANK.get(question_id)
+    question = QUESTION_BANK.get(question_id)
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
     return _fallback_response(question, attempt, error_tag)
@@ -269,7 +268,7 @@ def tutor_respond(req: TutorRequest) -> dict:
     Scores learners' answers, updates BKT mastery parameters,
     and returns correct feedback or advances the Socratic escalations.
     """
-    question = _MERGED_BANK.get(req.question_id)
+    question = QUESTION_BANK.get(req.question_id)
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
@@ -355,32 +354,10 @@ def tutor_respond(req: TutorRequest) -> dict:
         return response
 
     # 3. Score submitted answer
-    answer_type = question.get("answer_type", "numeric")
-    if answer_type == "mcq":
-        # MCQ scoring: compare option letter (A/B/C/D) or full text
-        expected = question["expected_answer"].strip().upper()
-        given = (req.learner_answer or "").strip().upper()
-        # Accept letter or option text
-        options = question.get("options", [])
-        option_map = {chr(65 + i): opt for i, opt in enumerate(options)}
-        # Normalize: if they typed the option text, convert to letter
-        for letter, text in option_map.items():
-            if given == text.upper():
-                given = letter
-                break
-        is_correct = given == expected
-        error_tag = None
-        if not is_correct:
-            rubric = question.get("rubric", [])
-            for item in rubric:
-                if given == item.get("pattern", "").upper():
-                    error_tag = item["error_tag"]
-                    break
-    else:
-        rubric_map = {item["pattern"]: item["error_tag"] for item in question.get("rubric", [])}
-        score_res = score_numeric_answer(req.learner_answer, question["expected_answer"], rubric_map)
-        is_correct = score_res.is_correct
-        error_tag = score_res.error_tag
+    rubric_map = {item["pattern"]: item["error_tag"] for item in question.get("rubric", [])}
+    score_res = score_numeric_answer(req.learner_answer, question["expected_answer"], rubric_map)
+    is_correct = score_res.is_correct
+    error_tag = score_res.error_tag
 
     # 4. Calculate new Bayesian Knowledge Tracing (BKT) mastery score
     new_p_know = update_mastery(prior_p_know, is_correct)
@@ -536,24 +513,9 @@ def tutor_respond(req: TutorRequest) -> dict:
     return response
 
 
-# Merge authored numeric questions with expanded MCQ bank
-_MERGED_BANK: dict[str, dict[str, Any]] = {**QUESTION_BANK, **ALL_SUBJECT_QUESTIONS}
-
-
 @router.get("/questions")
-def list_questions(subject: str | None = None) -> dict:
-    """Return all available questions, optionally filtered by subject."""
-    all_qs = list(_MERGED_BANK.values())
-    if subject:
-        def _subj(cid: str) -> str:
-            if cid.startswith(("math.", "num.", "eq.")):
-                return "mathematics"
-            if cid.startswith("sci."):
-                return "science"
-            if cid.startswith("eng."):
-                return "english"
-            return "unknown"
-        all_qs = [q for q in all_qs if _subj(q["concept_id"]) == subject]
+def list_questions() -> dict:
+    """Return all available questions in the tutor question bank."""
     return {
         "questions": [
             {
@@ -561,9 +523,7 @@ def list_questions(subject: str | None = None) -> dict:
                 "concept_id": q["concept_id"],
                 "prompt": q["prompt"],
                 "difficulty": q["difficulty"],
-                "answer_type": q.get("answer_type", "numeric"),
-                "options": q.get("options"),
             }
-            for q in all_qs
+            for q in QUESTION_BANK.values()
         ]
     }

@@ -94,11 +94,6 @@ Once the launchers report success, access the services here:
 | ⚙️ **Backend API** | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
 | 🏥 **Backend Health Check** | [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) |
 | 📘 **Interactive API Docs** | [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) |
-| ⚡ **FlowWatch Sidecar API** | [http://localhost:9400](http://localhost:9400) |
-| 📊 **FlowWatch Ops Dashboard** | [http://localhost:9400/ops](http://localhost:9400/ops) |
-
-### 🔑 Demo Student Credentials
-Pre-seeded student accounts for testing are listed in [users.md](file:///c:/Users/Pranshul%20Soni/Documents/Projects/Hackathons/Weekend-Devs/users.md) (e.g. `aanya@prism.demo` / `Prism_demo_1`). Each account is automatically seeded into PostgreSQL when you run `run-dev.bat` or `./run-dev.sh`.
 
 ---
 
