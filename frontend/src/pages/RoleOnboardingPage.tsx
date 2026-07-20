@@ -23,15 +23,18 @@ export function RoleOnboardingPage() {
             setUserEmail(user.email);
             setUserName(user.username || user.email.split("@")[0]);
           }
-          if (user.role && (user.role === "student" || user.role === "teacher")) {
-            setSelectedRole(user.role);
+          const existingRole = user.role;
+          if (existingRole === "student" || existingRole === "teacher") {
+            // Role already set — skip onboarding immediately
+            navigate(existingRole === "teacher" ? "/teacher" : "/learn", { replace: true });
+            return;
           }
         }
       }
     } catch (e) {
       // Ignore
     }
-  }, []);
+  }, [navigate]);
 
   const handleContinue = async () => {
     setSubmitting(true);
