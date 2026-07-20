@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageTransition } from "../components/PageTransition";
 import { PrismParticleField } from "../components/PrismParticleField";
 
+const SIDECAR_URL = "http://localhost:9400";
+
 interface OAuthCallbackProps {
-  onLoginSuccess?: (user: any, role: "student" | "teacher") => void;
+  onLoginSuccess?: (user: any, role?: "student" | "teacher") => void;
 }
 
 export function OAuthCallback({ onLoginSuccess }: OAuthCallbackProps) {
@@ -12,40 +14,68 @@ export function OAuthCallback({ onLoginSuccess }: OAuthCallbackProps) {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get("token") || searchParams.get("accessToken") || "google-oauth-session-token";
-    const email = searchParams.get("email") || "user@google.com";
-    const username = searchParams.get("username") || email.split("@")[0];
+    async function completeOAuth() {
+      const token = searchParams.get("token") || searchParams.get("accessToken") || "google-oauth-session-token";
+      const email = searchParams.get("email") || "user@google.com";
+      const username = searchParams.get("username") || email.split("@")[0];
 
-    let pendingRole: "student" | "teacher" = "student";
-    try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        pendingRole = (window.localStorage.getItem("prism_pending_role") as "student" | "teacher") || "student";
+      let savedRole: "student" | "teacher" | undefined = undefined;
+
+      // 1. Fetch user profile from PostgreSQL / Redis cache via FlowWatch API
+      try {
+        const profileRes = await fetch(`${SIDECAR_URL}/api/user/profile?email=${encodeURIComponent(email)}`);
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          if (profileData.user && (profileData.user.role === "student" || profileData.user.role === "teacher")) {
+            savedRole = profileData.user.role;
+          }
+        }
+      } catch (e) {
+        console.warn("[OAuth Callback Warning] Could not fetch profile from sidecar:", e);
       }
-    } catch (e) {
-      // Ignore
-    }
 
-    const userObj = { email, username, role: pendingRole, is_verified: true };
-
-    try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem("prism_token", token);
-        window.localStorage.setItem("prism_user", JSON.stringify(userObj));
-        window.localStorage.removeItem("prism_pending_role");
+      // 2. Local storage fallback
+      if (!savedRole) {
+        try {
+          if (typeof window !== "undefined" && window.localStorage) {
+            const stored = window.localStorage.getItem("prism_user");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed.email === email && (parsed.role === "student" || parsed.role === "teacher")) {
+                savedRole = parsed.role;
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore
+        }
       }
-    } catch (e) {
-      // Ignore
+
+      const userObj = { email, username, role: savedRole, is_verified: true };
+
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          window.localStorage.setItem("prism_token", token);
+          window.localStorage.setItem("prism_user", JSON.stringify(userObj));
+        }
+      } catch (e) {
+        // Ignore
+      }
+
+      if (onLoginSuccess) {
+        onLoginSuccess(userObj, savedRole);
+      }
+
+      if (savedRole === "teacher") {
+        navigate("/teacher");
+      } else if (savedRole === "student") {
+        navigate("/learn");
+      } else {
+        navigate("/onboarding");
+      }
     }
 
-    if (onLoginSuccess) {
-      onLoginSuccess(userObj, pendingRole);
-    }
-
-    if (pendingRole === "teacher") {
-      navigate("/teacher");
-    } else {
-      navigate("/learn");
-    }
+    completeOAuth();
   }, [navigate, searchParams, onLoginSuccess]);
 
   return (

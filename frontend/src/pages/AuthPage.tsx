@@ -7,13 +7,12 @@ import { PrismParticleField } from "../components/PrismParticleField";
 const SIDECAR_URL = "http://localhost:9400";
 
 interface AuthPageProps {
-  onLoginSuccess?: (user: any, role: "student" | "teacher") => void;
+  onLoginSuccess?: (user: any, role?: "student" | "teacher") => void;
 }
 
 export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [role, setRole] = useState<"student" | "teacher">("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -44,28 +43,65 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
         throw new Error(data.error?.message || data.error || "Authentication failed.");
       }
 
-      // Store auth tokens and user role in localStorage
-      const user = data.user || { email, username: username || email.split("@")[0] };
+      // Store auth tokens and basic user info
+      let user = data.user || { email, username: username || email.split("@")[0] };
       const token = data.tokens?.accessToken || "demo-jwt-token";
 
+      // 1. Fetch persistent user profile from PostgreSQL / Redis cache via FlowWatch API
+      let userRole: "student" | "teacher" | undefined = undefined;
+      try {
+        const profileRes = await fetch(`${SIDECAR_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`);
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          if (profileData.user) {
+            user = { ...user, ...profileData.user };
+            if (profileData.user.role === "student" || profileData.user.role === "teacher") {
+              userRole = profileData.user.role;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[Auth Warning] Could not fetch profile from sidecar cache:", e);
+      }
+
+      // 2. Fallback check local storage if offline
+      if (!userRole) {
+        try {
+          if (typeof window !== "undefined" && window.localStorage) {
+            const stored = window.localStorage.getItem("prism_user");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed.email === user.email && (parsed.role === "student" || parsed.role === "teacher")) {
+                userRole = parsed.role;
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      // Save user session
       try {
         if (typeof window !== "undefined" && window.localStorage) {
           window.localStorage.setItem("prism_token", token);
-          window.localStorage.setItem("prism_user", JSON.stringify({ ...user, role }));
+          window.localStorage.setItem("prism_user", JSON.stringify({ ...user, role: userRole }));
         }
       } catch (e) {
-        // Ignore storage error
+        // Ignore
       }
 
       if (onLoginSuccess) {
-        onLoginSuccess(user, role);
+        onLoginSuccess(user, userRole);
       }
 
-      // Navigate to corresponding view based on role
-      if (role === "teacher") {
+      // 3. Skip onboarding if role is already stored in database. Otherwise, show onboarding screen.
+      if (userRole === "teacher") {
         navigate("/teacher");
-      } else {
+      } else if (userRole === "student") {
         navigate("/learn");
+      } else {
+        navigate("/onboarding");
       }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
@@ -75,13 +111,6 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   };
 
   const handleGoogleOAuth = () => {
-    try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem("prism_pending_role", role);
-      }
-    } catch (e) {
-      // Ignore
-    }
     window.location.href = `${SIDECAR_URL}/auth/oauth/google`;
   };
 
@@ -103,8 +132,12 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
           </p>
         </div>
 
-        {/* Auth Glassmorphism Card */}
-        <div className="auth-glass-panel">
+        {/* Auth Glassmorphism Card with Layout Resizing Animation */}
+        <motion.div
+          layout
+          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          className="auth-glass-panel"
+        >
           {/* Mode Switch Tabs with Animated Pill */}
           <div className="auth-mode-tabs">
             <button
@@ -141,47 +174,11 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
           <AnimatePresence mode="wait">
             <motion.div
               key={mode}
-              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              initial={{ opacity: 0, y: 8, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.98 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, y: -8, scale: 0.99 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
-              {/* Role Selector */}
-              <div className="auth-role-section">
-                <label className="auth-role-label">
-                  Select Your Role
-                </label>
-                <div className="auth-role-grid">
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setRole("student")}
-                    className={`auth-role-btn ${role === "student" ? "active" : ""}`}
-                  >
-                    <div className="auth-role-header">
-                      <span className="auth-role-title">🎓 Student</span>
-                      {role === "student" && <span className="auth-role-indicator" />}
-                    </div>
-                    <span className="auth-role-desc">Adaptive learning</span>
-                  </motion.button>
-
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setRole("teacher")}
-                    className={`auth-role-btn ${role === "teacher" ? "active" : ""}`}
-                  >
-                    <div className="auth-role-header">
-                      <span className="auth-role-title">👩‍🏫 Teacher</span>
-                      {role === "teacher" && <span className="auth-role-indicator" />}
-                    </div>
-                    <span className="auth-role-desc">Intervention portal</span>
-                  </motion.button>
-                </div>
-              </div>
-
               {/* Alert Message */}
               {error && (
                 <motion.div
@@ -196,7 +193,12 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
               {/* Form Inputs */}
               <form onSubmit={handleSubmit}>
                 {mode === "signup" && (
-                  <div className="auth-field-group">
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="auth-field-group"
+                  >
                     <label className="auth-field-label">
                       Username
                     </label>
@@ -208,7 +210,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                       placeholder="e.g. alex_learner"
                       className="auth-input"
                     />
-                  </div>
+                  </motion.div>
                 )}
 
                 <div className="auth-field-group">
@@ -249,8 +251,8 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                   {loading
                     ? "Processing..."
                     : mode === "signin"
-                    ? `Sign In as ${role === "student" ? "Student" : "Teacher"}`
-                    : `Create ${role === "student" ? "Student" : "Teacher"} Account`}
+                    ? "Sign In to PRISM"
+                    : "Create Account"}
                 </motion.button>
               </form>
             </motion.div>
@@ -291,7 +293,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
             </svg>
             Continue with Google
           </motion.button>
-        </div>
+        </motion.div>
       </div>
     </PageTransition>
   );

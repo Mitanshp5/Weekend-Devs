@@ -24,7 +24,7 @@ export function DashboardShell() {
     } catch (e) {
       // Fallback on storage error
     }
-    setUser({ username: "Demo User", role: "student" });
+    setUser({ username: "Demo User" });
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -39,12 +39,33 @@ export function DashboardShell() {
     navigate("/auth");
   };
 
+  const handleSwitchRole = () => {
+    navigate("/onboarding");
+  };
+
+  const isTeacher = user?.role === "teacher";
+  const isStudent = user?.role === "student";
+
+  // Filter navigation items strictly based on active user role:
+  // Teacher -> Teacher view ONLY
+  // Student -> Student pages ONLY (Learn, Tutor, Progress)
+  // Default/Unassigned -> All navigation items
+  const visibleNavItems = navigationItems.filter((item) => {
+    if (isTeacher) {
+      return item.to === "/teacher";
+    }
+    if (isStudent) {
+      return item.to !== "/teacher";
+    }
+    return true;
+  });
+
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-nav" aria-label="Primary navigation">
-        <NavLink className="brand" to="/learn">PRISM</NavLink>
+        <NavLink className="brand" to={isTeacher ? "/teacher" : "/learn"}>PRISM</NavLink>
         <nav>
-          {navigationItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -92,7 +113,7 @@ export function DashboardShell() {
           ))}
         </nav>
 
-        {/* User Session Badge & Logout */}
+        {/* User Session Badge & Role Switcher */}
         <div style={{ marginTop: "auto", paddingTop: "1rem", borderTop: "1px solid rgba(145, 221, 196, 0.15)" }}>
           {user && (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
@@ -115,23 +136,43 @@ export function DashboardShell() {
                   {user.role || "student"}
                 </span>
               </div>
-              <button
-                onClick={handleLogout}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#587064",
-                  fontSize: "0.75rem",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  padding: 0,
-                  transition: "color 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#dff28a")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#587064")}
-              >
-                Sign out →
-              </button>
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button
+                  onClick={handleSwitchRole}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#91ddc4",
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    padding: 0,
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#dff28a")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#91ddc4")}
+                >
+                  Switch role
+                </button>
+                <span style={{ color: "#587064", fontSize: "0.75rem" }}>•</span>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#587064",
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    padding: 0,
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#dff28a")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#587064")}
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           )}
           <p className="nav-footer" style={{ marginTop: "0.5rem", fontSize: "0.7rem", color: "#587064" }}>

@@ -9,6 +9,7 @@ import { DiagnosticPage } from "./pages/DiagnosticPage";
 import { OAuthCallback } from "./pages/OAuthCallback";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { ProgressPage } from "./pages/ProgressPage";
+import { RoleOnboardingPage } from "./pages/RoleOnboardingPage";
 import { TeacherDashboardPage } from "./pages/TeacherDashboardPage";
 import { TutorPage } from "./pages/TutorPage";
 import { StartPage } from "./pages/StartPage";
@@ -20,6 +21,7 @@ function AppRoutes() {
     location.pathname === "/" ||
     location.pathname === "/diagnostic" ||
     location.pathname === "/auth" ||
+    location.pathname === "/onboarding" ||
     location.pathname.startsWith("/oauth");
 
   const rootKey = isStandAlone ? location.pathname : "dashboard";
@@ -29,6 +31,7 @@ function AppRoutes() {
       <Routes location={location} key={rootKey}>
         <Route path="/" element={<StartPage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/onboarding" element={<RoleOnboardingPage />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/diagnostic" element={<DiagnosticPage />} />
         <Route element={<DashboardShell />}>
