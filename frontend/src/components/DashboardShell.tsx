@@ -40,7 +40,7 @@ export function DashboardShell() {
   };
 
   const handleSwitchRole = () => {
-    navigate("/onboarding");
+    navigate("/onboarding?switch=true");
   };
 
   const isTeacher = user?.role === "teacher";

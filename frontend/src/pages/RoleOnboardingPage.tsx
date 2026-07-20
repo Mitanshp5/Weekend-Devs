@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "motion/react";
 import { PageTransition } from "../components/PageTransition";
 import { PrismParticleField } from "../components/PrismParticleField";
@@ -8,6 +8,9 @@ const SIDECAR_URL = "http://localhost:9400";
 
 export function RoleOnboardingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isSwitching = searchParams.get("switch") === "true";
+
   const [selectedRole, setSelectedRole] = useState<"student" | "teacher">("student");
   const [userName, setUserName] = useState<string>("Learner");
   const [userEmail, setUserEmail] = useState<string>("");
@@ -25,16 +28,19 @@ export function RoleOnboardingPage() {
           }
           const existingRole = user.role;
           if (existingRole === "student" || existingRole === "teacher") {
-            // Role already set — skip onboarding immediately
-            navigate(existingRole === "teacher" ? "/teacher" : "/learn", { replace: true });
-            return;
+            setSelectedRole(existingRole);
+            if (!isSwitching) {
+              // Role already set and not explicitly switching — skip onboarding
+              navigate(existingRole === "teacher" ? "/teacher" : "/learn", { replace: true });
+              return;
+            }
           }
         }
       }
     } catch (e) {
       // Ignore
     }
-  }, [navigate]);
+  }, [navigate, isSwitching]);
 
   const handleContinue = async () => {
     setSubmitting(true);
