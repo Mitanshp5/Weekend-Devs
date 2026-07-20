@@ -145,8 +145,7 @@ goto :start_database
 echo [5/7] Downloading and starting PostgreSQL...
 "%DOCKER_CMD%" compose pull postgres
 if errorlevel 1 (
-    echo [ERROR] PostgreSQL image download failed. Check Docker and internet access.
-    goto :failed
+    echo [WARNING] PostgreSQL image update/pull failed. Attempting to start with cached local image...
 )
 "%DOCKER_CMD%" compose up -d --wait postgres
 if errorlevel 1 (
@@ -173,6 +172,18 @@ set "RESULT=!ERRORLEVEL!"
 popd
 if not "!RESULT!"=="0" (
     echo [ERROR] Backend dependency installation failed.
+    goto :failed
+)
+goto :initialize_database
+
+:initialize_database
+echo Initializing PostgreSQL schema and idempotent seed data...
+pushd "%ROOT_DIR%\backend"
+"%BACKEND_PYTHON%" -c "from app.database import initialize_database; initialize_database()"
+set "RESULT=!ERRORLEVEL!"
+popd
+if not "!RESULT!"=="0" (
+    echo [ERROR] Database initialization failed.
     goto :failed
 )
 goto :setup_frontend

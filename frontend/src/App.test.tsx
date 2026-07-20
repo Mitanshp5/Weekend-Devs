@@ -10,8 +10,9 @@ describe("App", () => {
   it("shows PRISM's evidence-first learning entry", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Learning, made legible." })).toBeInTheDocument();
-    expect(screen.getByText(/Start with a short check-in/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Make the next step clear." })).toBeInTheDocument();
+    expect(screen.getByText(/Begin with a short check-in/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Student working at a desk inside layers of translucent prism light" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Start diagnostic" })).toBeInTheDocument();
   });
 

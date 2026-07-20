@@ -3,8 +3,14 @@
 from fastapi import FastAPI, HTTPException
 
 from app.database import concepts_for_unit, subjects_for_grade, units_for_subject
+from app.progress import router as progress_router
+from app.teacher import router as teacher_router
+from app.tutor import router as tutor_router
 
 app = FastAPI(title="PRISM API", version="0.1.0")
+app.include_router(progress_router)
+app.include_router(teacher_router)
+app.include_router(tutor_router)
 
 
 @app.get("/api/health")
