@@ -1,6 +1,6 @@
 """Learner identity and progress tracking for PRISM (Tutor Analytics).
 
-Provides demo learner profiles and aggregated progress stats
+Provides registered learner profiles and aggregated progress stats
 computed from mastery_history and tutor_sessions.
 """
 
@@ -13,88 +13,103 @@ from app.tutor_analytics_models import initialize_tutor_analytics_tables
 
 router = APIRouter(prefix="/api/learners", tags=["learners"])
 
-# ---------------------------------------------------------------------------
-# Demo learner registry (temporary, replaced by auth in production)
-# ---------------------------------------------------------------------------
-
-DEMO_LEARNERS: list[dict[str, str | int]] = [
-    {"id": 1, "name": "Aanya Sharma", "description": "Grade-level learner, consistent performer"},
-    {"id": 2, "name": "Ravi Kumar", "description": "Foundational learner, needs prerequisite support"},
-    {"id": 3, "name": "Priya Patel", "description": "Advanced learner, quick mastery"},
-    {"id": 4, "name": "Arjun Singh", "description": "Developing learner, improving steadily"},
-    {"id": 5, "name": "Meera Iyer", "description": "Grade-level learner, strong in Science"},
-    {"id": 6, "name": "Kabir Das", "description": "Foundational learner, struggles with word problems"},
-    {"id": 7, "name": "Nisha Reddy", "description": "Advanced learner, excels in English"},
-    {"id": 8, "name": "Vikram Joshi", "description": "Developing learner, inconsistent performance"},
-]
-
 
 @router.get("")
 def list_learners() -> dict:
-    """Return all available demo learners."""
-    return {"learners": DEMO_LEARNERS}
+    """Return all registered student accounts from the auth_users table."""
+    initialize_tutor_analytics_tables()
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT username, email
+                    FROM auth_users
+                    WHERE role = 'student'
+                    ORDER BY created_at ASC
+                    LIMIT 50
+                    """
+                )
+                rows = cur.fetchall()
+
+        # Map email-based learner records with descriptions from seed definitions
+        LEARNER_DESCRIPTIONS = {
+            "aanya@prism.demo": "Grade-level learner, consistent performer",
+            "ravi@prism.demo": "Foundational learner, needs prerequisite support",
+            "priya@prism.demo": "Advanced learner, quick mastery",
+            "arjun@prism.demo": "Developing learner, improving steadily",
+            "meera@prism.demo": "Grade-level learner, strong in Science",
+            "kabir@prism.demo": "Foundational learner, struggles with word problems",
+            "nisha@prism.demo": "Advanced learner, excels in English",
+            "vikram@prism.demo": "Developing learner, inconsistent performance",
+        }
+
+        learners = [
+            {
+                "id": row["email"],  # Use email as learner_id for backend queries
+                "name": row["username"] or row["email"].split("@")[0].title(),
+                "email": row["email"],
+                "description": LEARNER_DESCRIPTIONS.get(row["email"], "Student"),
+            }
+            for row in rows
+        ]
+        return {"learners": learners}
+    except Exception:
+        # Fallback if auth_users table not yet available
+        return {"learners": []}
 
 
 @router.get("/{learner_id}/progress")
-def get_learner_progress(learner_id: int) -> dict:
-    """Return aggregated progress stats for a learner.
-
-    Computed live from mastery_history and tutor_sessions tables.
-    """
+def get_learner_progress(learner_id: str) -> dict:
+    """Return aggregated progress stats for a learner (keyed by email)."""
     initialize_tutor_analytics_tables()
-    lid = str(learner_id)
 
     with connect() as conn:
         with conn.cursor() as cur:
-            # Questions attempted (distinct question_ids in tutor_sessions with a learner answer)
             cur.execute(
                 """
                 SELECT COUNT(DISTINCT question_id) AS questions_attempted
                 FROM tutor_sessions
                 WHERE learner_id = %s
                 """,
-                (lid,),
+                (learner_id,),
             )
             row = cur.fetchone()
             questions_attempted = row["questions_attempted"] if row else 0
 
-            # Questions solved correctly (has a check_thinking response = correct)
             cur.execute(
                 """
                 SELECT COUNT(DISTINCT question_id) AS questions_correct
                 FROM tutor_sessions
                 WHERE learner_id = %s AND response_mode = 'check_thinking'
                 """,
-                (lid,),
+                (learner_id,),
             )
             row = cur.fetchone()
             questions_correct = row["questions_correct"] if row else 0
 
-            # Hints used
             cur.execute(
                 """
                 SELECT COUNT(*) AS hints_used
                 FROM mastery_history
                 WHERE learner_id = %s AND hint_used = true
                 """,
-                (lid,),
+                (learner_id,),
             )
             row = cur.fetchone()
             hints_used = row["hints_used"] if row else 0
 
-            # Concepts covered (distinct concept_ids in mastery_history)
             cur.execute(
                 """
                 SELECT COUNT(DISTINCT concept_id) AS concepts_covered
                 FROM mastery_history
                 WHERE learner_id = %s
                 """,
-                (lid,),
+                (learner_id,),
             )
             row = cur.fetchone()
             concepts_covered = row["concepts_covered"] if row else 0
 
-            # Average mastery (latest p_know per concept)
             cur.execute(
                 """
                 SELECT AVG(latest.p_know) AS avg_mastery
@@ -105,12 +120,11 @@ def get_learner_progress(learner_id: int) -> dict:
                     ORDER BY concept_id, created_at DESC, id DESC
                 ) latest
                 """,
-                (lid,),
+                (learner_id,),
             )
             row = cur.fetchone()
             avg_mastery = round(row["avg_mastery"], 3) if row and row["avg_mastery"] else 0.0
 
-            # Strong and weak topics
             cur.execute(
                 """
                 SELECT DISTINCT ON (concept_id) concept_id, p_know
@@ -118,22 +132,30 @@ def get_learner_progress(learner_id: int) -> dict:
                 WHERE learner_id = %s
                 ORDER BY concept_id, created_at DESC, id DESC
                 """,
-                (lid,),
+                (learner_id,),
             )
             concept_rows = cur.fetchall()
             strong_topics = [r["concept_id"] for r in concept_rows if r["p_know"] >= 0.70]
             weak_topics = [r["concept_id"] for r in concept_rows if r["p_know"] < 0.40]
 
-    # Find learner name
+    # Resolve name from auth_users
     learner_name = None
-    for l in DEMO_LEARNERS:
-        if l["id"] == learner_id:
-            learner_name = l["name"]
-            break
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT username FROM auth_users WHERE email = %s",
+                    (learner_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    learner_name = row["username"]
+    except Exception:
+        pass
 
     return {
         "learner_id": learner_id,
-        "learner_name": learner_name,
+        "learner_name": learner_name or learner_id.split("@")[0].title(),
         "questions_attempted": questions_attempted,
         "questions_correct": questions_correct,
         "hints_used": hints_used,

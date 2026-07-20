@@ -113,6 +113,15 @@ if errorlevel 1 (
     echo [WARNING] Failed to seed Tutor Analytics data. Skipping.
 )
 
+:: 8. Seed demo student learner accounts (idempotent — safe to run on every startup)
+echo Seeding demo student accounts...
+pushd "%ROOT_DIR%\backend"
+.venv\Scripts\python.exe -m app.seed_learners
+popd
+if errorlevel 1 (
+    echo [WARNING] Failed to seed demo student accounts. Skipping.
+)
+
 echo.
 echo =========================================
 echo PRISM is running!

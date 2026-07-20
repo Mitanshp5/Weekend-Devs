@@ -2,7 +2,7 @@
  * TutorPage — Magoosh-inspired structured Socratic tutor interface.
  *
  * Features:
- *   - Demo learner dropdown selector with localStorage persistence
+ *   - Uses the logged-in user's email as learner_id (no manual dropdown)
  *   - Subject filter pills (Math / Science / English)
  *   - AI Tutor featured promo card (Magoosh style)
  *   - Question selector as lesson list
@@ -14,11 +14,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageTransition } from "../components/PageTransition";
 import {
-  fetchLearners,
   fetchQuestions,
   postGuidance,
   postTutorRespond,
-  type DemoLearner,
   type QuestionSummary,
   type TutorResponse,
 } from "../api/tutorAnalytics";
@@ -152,13 +150,28 @@ interface ChatMessage {
   confidence?: string;
 }
 
-const STORAGE_KEY = "prism_selected_learner";
-
 export function TutorPage() {
-  /* Learner state */
-  const [learners, setLearners] = useState<DemoLearner[]>([]);
-  const [learnerId, setLearnerId] = useState<string>(() => localStorage.getItem(STORAGE_KEY) ?? "");
-  const [learnerError, setLearnerError] = useState("");
+  /* Read logged-in user email from session — used as learner_id for all API calls */
+  const learnerId = (() => {
+    try {
+      const stored = localStorage.getItem("prism_user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        return user.email as string;
+      }
+    } catch { /* ignore */ }
+    return "";
+  })();
+  const learnerName = (() => {
+    try {
+      const stored = localStorage.getItem("prism_user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        return (user.username || user.email?.split("@")[0] || "Learner") as string;
+      }
+    } catch { /* ignore */ }
+    return "Learner";
+  })();
 
   /* Subject filter */
   const [subjectFilter, setSubjectFilter] = useState("all");
@@ -174,21 +187,6 @@ export function TutorPage() {
   const [solved, setSolved] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  /* Load demo learners */
-  useEffect(() => {
-    fetchLearners()
-      .then((data) => {
-        setLearners(data.learners);
-        // Auto-select first learner if none stored
-        if (!learnerId && data.learners.length > 0) {
-          const defaultId = String(data.learners[0].id);
-          setLearnerId(defaultId);
-          localStorage.setItem(STORAGE_KEY, defaultId);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   /* Load questions */
   useEffect(() => {
     fetchQuestions()
@@ -203,15 +201,6 @@ export function TutorPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
-  /* Persist learner selection */
-  const handleLearnerChange = useCallback((val: string) => {
-    setLearnerId(val);
-    setLearnerError("");
-    localStorage.setItem(STORAGE_KEY, val);
-  }, []);
-
-  const selectedLearner = learners.find((l) => String(l.id) === learnerId);
-
   /* Filter questions by subject */
   const filteredQuestions = subjectFilter === "all"
     ? questions
@@ -219,32 +208,24 @@ export function TutorPage() {
 
   const handleSelectQuestion = useCallback(
     (q: QuestionSummary) => {
-      if (!learnerId) {
-        setLearnerError("Please select a learner before starting a question.");
-        return;
-      }
       setSelectedQ(q);
       setAttempt(0);
       setChatHistory([
         {
           role: "tutor",
-          content: `Hi${selectedLearner ? ` ${selectedLearner.name.split(" ")[0]}` : ""}! Let's work on: "${q.prompt}"`,
+          content: `Hi ${learnerName.split(" ")[0]}! Let's work on: "${q.prompt}"`,
           mode: "socratic_hint",
         },
       ]);
       setAnswer("");
       setSolved(false);
     },
-    [learnerId, selectedLearner],
+    [learnerName],
   );
 
   /* Handle guidance quick options */
   const handleGuidance = useCallback(
     async (questionType: string, displayText: string) => {
-      if (!learnerId) {
-        setLearnerError("Please select a learner first.");
-        return;
-      }
       setLoading(true);
       setChatHistory((prev) => [...prev, { role: "learner", content: displayText }]);
       try {
@@ -271,10 +252,6 @@ export function TutorPage() {
   const handleAction = useCallback(
     async (forcedAnswer?: string, hintAttempt?: number) => {
       if (!selectedQ || loading) return;
-      if (!learnerId) {
-        setLearnerError("Please select a learner before submitting.");
-        return;
-      }
       setLoading(true);
 
       const isHint = hintAttempt !== undefined;
@@ -353,56 +330,17 @@ export function TutorPage() {
         <span>PRISM AI Tutor</span>
       </div>
 
-      {/* Learner selector */}
-      <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap", marginBottom: "1rem" }}>
-        <label className="mg-learner-input" style={{ display: "flex", alignItems: "center", gap: ".5rem", margin: 0 }}>
-          <span style={{ fontWeight: 600, fontSize: ".85rem", color: "#2d3436", fontFamily: '"Inter", sans-serif', whiteSpace: "nowrap" }}>
-            👤 Learner
-          </span>
-          <select
-            value={learnerId}
-            onChange={(e) => handleLearnerChange(e.target.value)}
-            style={{
-              padding: ".4rem .6rem",
-              borderRadius: ".4rem",
-              border: "1px solid #dfe6e9",
-              fontSize: ".85rem",
-              fontFamily: '"Inter", sans-serif',
-              color: "#2d3436",
-              minWidth: "180px",
-              cursor: "pointer",
-            }}
-            id="learner-selector"
-          >
-            <option value="">Select a student...</option>
-            {learners.map((l) => (
-              <option key={l.id} value={String(l.id)}>
-                {l.id}. {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {selectedLearner && (
-          <span style={{ fontSize: ".78rem", color: "#636e72", fontFamily: '"Inter", sans-serif' }}>
-            {selectedLearner.description}
+      {/* Learner identity banner */}
+      <div style={{ display: "flex", gap: ".6rem", alignItems: "center", marginBottom: "1rem" }}>
+        <span style={{ fontWeight: 600, fontSize: ".85rem", color: "#2d3436", fontFamily: '"Inter", sans-serif' }}>
+          👤 {learnerName}
+        </span>
+        {learnerId && (
+          <span style={{ fontSize: ".75rem", color: "#636e72", fontFamily: '"Inter", sans-serif' }}>
+            {learnerId}
           </span>
         )}
       </div>
-      {learnerError && (
-        <div style={{
-          background: "rgba(214,48,49,.08)",
-          border: "1px solid rgba(214,48,49,.2)",
-          borderRadius: ".4rem",
-          padding: ".5rem .8rem",
-          marginBottom: "1rem",
-          color: "#d63031",
-          fontSize: ".82rem",
-          fontWeight: 600,
-          fontFamily: '"Inter", sans-serif',
-        }}>
-          ⚠️ {learnerError}
-        </div>
-      )}
 
       {/* Subject filter pills */}
       <div style={{ display: "flex", gap: ".4rem", marginBottom: "1.2rem", flexWrap: "wrap" }}>
