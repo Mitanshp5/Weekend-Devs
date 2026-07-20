@@ -15,7 +15,7 @@ __pycache__/
 dist/
 build/
 *.tsbuildinfo
-my_stuff/
+reference_material/
 *.db
 start.bat
 stop.bat
