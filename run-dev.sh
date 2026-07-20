@@ -91,17 +91,11 @@ if [[ "$HEALTH_OK" -eq 0 ]]; then
   die "The backend or FlowWatch sidecar health check did not respond."
 fi
 
-# 7. Seed Tutor Analytics data
-log "seed" "Seeding Tutor Analytics data..."
-(cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -c "from tests.tutor_analytics_fixtures import seed_tutor_analytics_data; seed_tutor_analytics_data()") || log "warning" "Failed to seed Tutor Analytics data."
+# 7. Seeding is handled automatically by initialize_database() on first startup
 
 # 8. Clear Redis auth rate-limit counters (dev only — prevents 429 on login after restarts)
 log "seed" "Clearing auth rate-limit counters..."
-docker exec weekend-devs-redis-1 redis-cli DEL "rate_limit:login:::1" "rate_limit:register:::1" >/dev/null 2>&1 || true
-
-# 9. Seed demo student learner accounts (idempotent — safe to run on every startup)
-log "seed" "Seeding demo student accounts..."
-(cd "$ROOT_DIR/backend" && "$BACKEND_PYTHON" -m app.seed_learners) || log "warning" "Failed to seed demo student accounts."
+docker compose exec -T redis redis-cli DEL "rate_limit:login:::1" "rate_limit:register:::1" >/dev/null 2>&1 || true
 
 printf '\n=========================================\nPRISM is running!\nFrontend:          http://localhost:5173\nBackend:           http://127.0.0.1:8000\nAPI docs:          http://127.0.0.1:8000/docs\nFlowWatch Sidecar: http://localhost:9400\nFlowWatch Ops:     http://localhost:9400/ops\n\nPress Ctrl+C to stop all servers.\n=========================================\n'
 wait
