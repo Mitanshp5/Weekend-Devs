@@ -9,7 +9,7 @@ set "BACKEND_PYTHON=%ROOT_DIR%\backend\.venv\Scripts\python.exe"
 
 title PRISM Setup
 echo =========================================
-echo       PRISM Installation & Verification  
+echo       PRISM Installation ^& Verification  
 echo =========================================
 echo.
 
@@ -31,7 +31,7 @@ if not exist ".env" (
         echo [ERROR] .env.example is missing from the repository root.
         goto :failed
     )
-    echo [1/7] Creating the root .env file from .env.example...
+    echo [1/8] Creating the root .env file from .env.example...
     copy /y ".env.example" ".env" >nul
 )
 for %%K in (POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_PORT PRISM_DATABASE_URL) do (
@@ -44,7 +44,7 @@ for %%K in (POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_PORT PRISM_DATA
 goto :ensure_docker
 
 :ensure_docker
-echo [2/7] Checking Docker Desktop...
+echo [2/8] Checking Docker Desktop...
 where docker >nul 2>&1
 if errorlevel 1 (
     echo Docker was not found. Attempting installation with winget...
@@ -76,7 +76,7 @@ echo Complete any Docker Desktop first-run or WSL2 prompts, then run this file a
 goto :failed
 
 :ensure_python
-echo [3/7] Checking Python 3.11+...
+echo [3/8] Checking Python 3.11+...
 for %%I in (py.exe) do set "PYTHON_CMD=%%~$PATH:I"
 if not defined PYTHON_CMD for %%I in (python.exe) do set "PYTHON_CMD=%%~$PATH:I"
 if not defined PYTHON_CMD (
@@ -108,7 +108,7 @@ if errorlevel 1 (
 goto :ensure_node
 
 :ensure_node
-echo [4/7] Checking Node.js and npm...
+echo [4/8] Checking Node.js and npm...
 for %%I in (npm.cmd) do set "NPM_CMD=%%~$PATH:I"
 if not defined NPM_CMD if exist "%ProgramFiles%\nodejs\npm.cmd" (
     set "NPM_CMD=%ProgramFiles%\nodejs\npm.cmd"
@@ -142,21 +142,21 @@ if errorlevel 1 (
 goto :start_database
 
 :start_database
-echo [5/7] Downloading and starting PostgreSQL...
-"%DOCKER_CMD%" compose pull postgres
+echo [5/8] Downloading and starting PostgreSQL and Redis...
+"%DOCKER_CMD%" compose pull postgres redis
 if errorlevel 1 (
-    echo [WARNING] PostgreSQL image update/pull failed. Attempting to start with cached local image...
+    echo [WARNING] Container image update/pull failed. Attempting to start with cached local images...
 )
-"%DOCKER_CMD%" compose up -d --wait postgres
+"%DOCKER_CMD%" compose up -d postgres redis
 if errorlevel 1 (
-    echo [ERROR] PostgreSQL did not become healthy.
+    echo [ERROR] PostgreSQL / Redis containers failed to start.
     "%DOCKER_CMD%" compose logs --tail=40 postgres
     goto :failed
 )
 goto :setup_backend
 
 :setup_backend
-echo [6/7] Creating the backend virtual environment and installing dependencies...
+echo [6/8] Creating the backend virtual environment and installing dependencies...
 if not exist "%BACKEND_PYTHON%" (
     "%PYTHON_CMD%" -m venv "%ROOT_DIR%\backend\.venv"
     if errorlevel 1 (
@@ -189,7 +189,7 @@ if not "!RESULT!"=="0" (
 goto :setup_frontend
 
 :setup_frontend
-echo [7/7] Installing frontend dependencies...
+echo [7/8] Installing frontend dependencies...
 pushd "%ROOT_DIR%\frontend"
 if exist package-lock.json (
     call "%NPM_CMD%" ci --no-audit --no-fund
@@ -200,6 +200,23 @@ set "RESULT=!ERRORLEVEL!"
 popd
 if not "!RESULT!"=="0" (
     echo [ERROR] Frontend dependency installation failed.
+    goto :failed
+)
+goto :setup_sidecar
+
+:setup_sidecar
+echo [8/8] Installing and updating FlowWatch sidecar dependencies...
+pushd "%ROOT_DIR%\flowwatch-sidecar"
+call "%NPM_CMD%" install --no-audit --no-fund
+if errorlevel 1 (
+    popd
+    goto :failed
+)
+call "%NPM_CMD%" install @pranshulsoni/flowwatch@latest --no-audit --no-fund
+set "RESULT=!ERRORLEVEL!"
+popd
+if not "!RESULT!"=="0" (
+    echo [ERROR] FlowWatch sidecar dependency installation failed.
     goto :failed
 )
 goto :verify_project

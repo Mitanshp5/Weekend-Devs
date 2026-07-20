@@ -19,17 +19,18 @@ import {
 import { CONCEPT_NAMES } from "./TutorPage";
 
 const SUBJECT_MAP: Record<string, string> = {
+  "math.": "Math",
   "num.": "Math",
   "eq.": "Math",
-  sci: "Science",
-  eng: "English",
+  "sci.": "Science",
+  "eng.": "English",
 };
 
 function getSubject(conceptId: string): string {
   for (const [prefix, subject] of Object.entries(SUBJECT_MAP)) {
     if (conceptId.startsWith(prefix)) return subject;
   }
-  return "Math";
+  return "Other";
 }
 
 interface SubjectAgg {
@@ -68,11 +69,26 @@ export function ProgressPage() {
   const [concepts, setConcepts] = useState<MasteryState[]>([]);
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
-  const [learnerId, setLearnerId] = useState(() => new URLSearchParams(window.location.search).get("learner") ?? "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const timelineRef = useRef<HTMLElement>(null);
+
+  /* Read active logged-in user session */
+  const currentAccount = (() => {
+    try {
+      const stored = localStorage.getItem("prism_user");
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {
+      // Ignore
+    }
+    return null;
+  })();
+
+  const learnerId = (currentAccount?.email || "aanya@prism.demo") as string;
+  const learnerName = (currentAccount?.username || currentAccount?.email?.split("@")[0] || "Learner") as string;
 
   useEffect(() => {
     if (!learnerId.trim()) {
@@ -99,7 +115,7 @@ export function ProgressPage() {
         setTimeout(() => timelineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
       })
       .catch(() => setTimeline([]));
-  }, []);
+  }, [learnerId]);
 
   const allSubjects = aggregateBySubject(concepts);
   const filtered =
@@ -123,10 +139,25 @@ export function ProgressPage() {
         <span>Analytics</span>
       </div>
 
-      <label className="mg-learner-input">
-        Learner ID
-        <input value={learnerId} onChange={(event) => setLearnerId(event.target.value)} placeholder="Enter your learner ID" />
-      </label>
+      {/* Account Badge */}
+      <div style={{ margin: "0.4rem 0 1rem" }}>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: ".4rem",
+            background: "rgba(85, 50, 133, 0.08)",
+            color: "#553285",
+            fontWeight: 600,
+            fontSize: ".85rem",
+            padding: ".4rem .85rem",
+            borderRadius: ".6rem",
+            border: "1px solid rgba(85, 50, 133, 0.15)",
+          }}
+        >
+          👤 <strong>{learnerName}</strong> ({learnerId})
+        </span>
+      </div>
 
       <h1 style={{ maxWidth: "20ch", fontSize: "clamp(2rem, 4vw, 3rem)" }}>
         Analytics
