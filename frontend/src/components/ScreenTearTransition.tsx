@@ -20,9 +20,10 @@ export function ScreenTearTransition({ onComplete }: ScreenTearTransitionProps) 
       <motion.div
         className="route-transition-curtain"
         data-testid="route-transition-curtain"
+        data-transition-duration="0.62"
         initial={reduceMotion ? { opacity: 1 } : { x: "-104%", opacity: 1 }}
         animate={reduceMotion ? { opacity: 1 } : { x: "0%", opacity: 1 }}
-        transition={{ duration: reduceMotion ? 0.01 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: reduceMotion ? 0.01 : 0.62, ease: [0.22, 1, 0.36, 1] }}
         onAnimationComplete={onComplete}
       >
         <span className="route-transition-curtain__signal" />

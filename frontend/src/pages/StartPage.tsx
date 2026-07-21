@@ -65,7 +65,7 @@ export function StartPage() {
           <p>Curriculum citations and a concise reasoning trace make that support legible without pretending an answer is certain.</p>
         </OverviewSection>
 
-        <OverviewSection id="mastery" eyebrow="Learning evidence" title="A resolved doubt should change what happens next." visual={<div className="concept-map" aria-label="Concept graph anatomy"><span className="concept-map__node concept-map__node--resolved">Resolved concept</span><span className="concept-map__node">Related weak area</span><span className="concept-map__node">Next check</span></div>}>
+        <OverviewSection id="mastery" eyebrow="Learning evidence" title="A resolved doubt should change what happens next." visual={<div className="concept-map" aria-label="Concept graph anatomy"><span className="concept-map__node concept-map__node--resolved">Resolved concept</span><span className="concept-map__node concept-map__node--related">Related weak area</span><span className="concept-map__node concept-map__node--next">Next check</span></div>}>
           <p>A living concept graph links resolved concepts to related weak areas. Session history, evidence recency, independent correctness, and uncertainty are designed to inform mastery progression — not reduce a learner to one opaque score.</p>
         </OverviewSection>
 

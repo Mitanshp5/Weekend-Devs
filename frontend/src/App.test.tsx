@@ -14,6 +14,8 @@ describe("App", () => {
     expect(screen.getByRole("navigation", { name: "Project overview" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "One grade. Many starting points." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Answer the concept beneath the question." })).toBeInTheDocument();
+    expect(screen.getByText("Related weak area")).toHaveClass("concept-map__node--related");
+    expect(screen.getByText("Next check")).toHaveClass("concept-map__node--next");
     expect(screen.getByText(/Hackathon prototype/)).toBeInTheDocument();
   });
 
