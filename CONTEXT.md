@@ -23,17 +23,17 @@ The demo must work locally with PostgreSQL and deterministic logic. It is not a 
 9. **Accessibility and motion.** Use `motion/react` only; retain `MotionConfig reducedMotion="user"`, keyboard access, visible focus, semantic controls, sufficient contrast, and reduced-motion behavior.
 10. **Do not overwrite teammates’ work.** Pull/fetch before editing, inspect diffs, preserve unrelated changes, do not force-push, and do not rewrite remote history.
 
-## Current implementation status — 2026-07-20
+## Current implementation status — 2026-07-22
 
 | Area | Current state |
 | --- | --- |
-| Frontend | React + TypeScript + Vite. Landing, catalog, subject paths, tutor, progress, and teacher dashboard routes are wired. Motion and reduced-motion support are present. |
+| Frontend | React + TypeScript + Vite. `/` is a cinematic, scroll-driven PRISM project overview with an SVG/CSS learning orbit, semantic narrative sections, sticky anchor navigation, responsive re-composition, and reduced-motion support. Catalog, subject paths, tutor, progress, and teacher dashboard routes remain wired. |
 | Backend | FastAPI with health, catalog, tutor, progress, and teacher routes. Deterministic scoring/mastery modules exist. |
 | Database | PostgreSQL 16 via `compose.yaml`. `initialize_database()` creates schema, seeds Grade 8 catalog data, and seeds prototype tutor-analytics records when analytics tables are empty. |
 | Curriculum | Grade 8 NCERT-linked metadata: Mathematics (13 units), Science (13), English (8); 102 concepts. Source-linked catalog is exposed through API. |
 | Tutor analytics | Tutor orchestration, learner progress evidence, teacher cohort/intervention read models, and tests exist. Prototype learner/mastery/cluster data is persisted in PostgreSQL, never frontend-local. |
 | Local launch | `setup.sh` / `setup.bat` install and verify dependencies; `run-dev.sh` / `run-dev.bat` start PostgreSQL, initialize schema/seeds, then launch FastAPI and Vite. |
-| Validation last run | Backend: 31 tests passed. Frontend: 12 tests passed and production build passed. |
+| Validation last run | Frontend: 18 Vitest suites / 32 tests passed; production build passed; `git diff --check` passed. Backend tests are currently blocked because Docker Desktop/PostgreSQL is not running. Browser visual QA is blocked because the Camofox browser service is unavailable. |
 
 ## Architecture
 
