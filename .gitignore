@@ -2,8 +2,13 @@ repos/
 graphify-out/
 .env
 .env.*
+.fw.env
+*.env
+secrets/
+secrets/*
 !*.example
 node_modules/
+**/node_modules/
 .venv/
 *.egg-info/
 __pycache__/

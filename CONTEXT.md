@@ -1,135 +1,143 @@
-# PRISM — Project Context
+# PRISM — Agent Working Context
 
-> **Condensed project reference for agents.** Covers architecture, status, team split, tech stack, and key contracts. For full detail see the referenced source files.
+> **Read this before changing PRISM.** This is the project’s implementation contract and current state. Keep it current whenever a feature is completed, replaced, or discovered to be blocked.
 
-## Product Thesis
+## Product and demo goal
 
-PRISM is an adaptive, offline-resilient STEM-learning prototype for mixed-ability classrooms. It turns every learner interaction into explainable evidence, identifies prerequisite gaps behind errors/doubts, gives curriculum-grounded remediation, and tells the teacher whom to help.
+PRISM (**Personalized Remediation and Intelligent Scaffolding for Mastery**) is a Grade 8 adaptive-learning prototype for mixed-ability classrooms. It must turn learner evidence into an understandable next step:
 
-**Non-negotiables:** (1) Every adaptation is explainable. (2) Core loop works with NO LLM / NO internet. (3) No static-dashboard theatre — all data from persisted events. (4) No fake ML. (5) No black-box root-gap assertion. (6) No cloud-dependent demo. (7) No hollow AI claim.
+**Observe → Map → Guide → Verify**
 
-## Current Status
+The demo must work locally with PostgreSQL and deterministic logic. It is not a generic chatbot or a static dashboard mock-up.
 
-| Component                       | Status                                                                         |
-| ------------------------------- | ------------------------------------------------------------------------------ |
-| React + Vite + TS frontend      | Scaffolded — 7 routes wired, StartPage/DiagnosticPage live, others placeholder |
-| FastAPI + Python backend        | Health endpoint, deterministic scoring, BKT mastery — all tested               |
-| PostgreSQL (via Docker Compose) | Running, seed data loaded (3 subjects, 34 units, 102 concepts)                 |
-| Curriculum metadata             | Grade 8 NCERT-linked (Math 13 units, Science 13 units, English 8 units)        |
-| Visual identity                 | CSS done — responsive, accessible, reduced-motion support                      |
-| Research & playbook             | Complete — see `research/` and `my_stuff/`                                     |
+## Non-negotiable requirements
 
-## Team Split
+1. **PostgreSQL is the source of truth.** Do not add SQLite. Use Docker Compose with the official `postgres:16-alpine` image.
+2. **No production frontend mock data.** Curriculum, learner, mastery, teacher, diagnostic, and recommendation state must be fetched from APIs backed by PostgreSQL. Test-only fixtures belong under `backend/tests/` only.
+3. **No hardcoded dynamic values in UI.** Never default a page to a learner ID, synthetic mastery score, subject path, teacher summary, or API-looking result. Require a real route/query/input selection or API response.
+4. **Seed all required demo data through `backend/app/database.py`.** `initialize_database()` must be idempotent: create/update schema and seed catalog/demo records only when appropriate. Do not seed through a frontend constant, one-off shell command, or a route side effect.
+5. **Launchers must initialize the database.** `setup.sh`, `setup.bat`, `run-dev.sh`, and `run-dev.bat` must call `initialize_database()` after PostgreSQL is healthy and backend dependencies exist, before the app is used.
+6. **One ignored root `.env` only.** Copy `.env.example` to `.env`; do not create or document a `backend/.env`. Never commit `.env`, credentials, tokens, or real connection strings.
+7. **No fake intelligence.** Keep scoring, misconception tagging, mastery/BKT updates, root-gap inference, and recommendations deterministic and explainable. Any future LLM is optional, bounded, curriculum-grounded, and must have a deterministic fallback.
+8. **No broken ends.** Every exposed route, button, CTA, form, nav item, API call, empty state, loading state, and error state must be implemented or intentionally removed. Do not ship dead UI.
+9. **Accessibility and motion.** Use `motion/react` only; retain `MotionConfig reducedMotion="user"`, keyboard access, visible focus, semantic controls, sufficient contrast, and reduced-motion behavior.
+10. **Do not overwrite teammates’ work.** Pull/fetch before editing, inspect diffs, preserve unrelated changes, do not force-push, and do not rewrite remote history.
 
-| Person                    | Scope                                                                     | Branch                             |
-| ------------------------- | ------------------------------------------------------------------------- | ---------------------------------- |
-| 1                         | Diagnostic + adaptive backend (APIs, attempts, misconceptions, sessions)  | —                                  |
-| 2                         | Learner experience (diagnostic workspace, lessons, practice, feedback UI) | —                                  |
-| **Tutor Analytics (you)** | **Tutor orchestrator, progress evidence, teacher intervention board**     | `tutor_orch_progress_teacher_view` |
-| 4                         | Demo, PPT, integration, QA                                                | —                                  |
+## Current implementation status — 2026-07-20
+
+| Area | Current state |
+| --- | --- |
+| Frontend | React + TypeScript + Vite. Landing, catalog, subject paths, tutor, progress, and teacher dashboard routes are wired. Motion and reduced-motion support are present. |
+| Backend | FastAPI with health, catalog, tutor, progress, and teacher routes. Deterministic scoring/mastery modules exist. |
+| Database | PostgreSQL 16 via `compose.yaml`. `initialize_database()` creates schema, seeds Grade 8 catalog data, and seeds prototype tutor-analytics records when analytics tables are empty. |
+| Curriculum | Grade 8 NCERT-linked metadata: Mathematics (13 units), Science (13), English (8); 102 concepts. Source-linked catalog is exposed through API. |
+| Tutor analytics | Tutor orchestration, learner progress evidence, teacher cohort/intervention read models, and tests exist. Prototype learner/mastery/cluster data is persisted in PostgreSQL, never frontend-local. |
+| Local launch | `setup.sh` / `setup.bat` install and verify dependencies; `run-dev.sh` / `run-dev.bat` start PostgreSQL, initialize schema/seeds, then launch FastAPI and Vite. |
+| Validation last run | Backend: 31 tests passed. Frontend: 12 tests passed and production build passed. |
 
 ## Architecture
 
-```
-PWA Client (React/Vite/TS)
-  ├── Learner app (diagnostic, lessons, practice, tutor, progress)
-  ├── Teacher dashboard (cohort command center, intervention cards, clusters)
-  ├── Local curriculum cache + IndexedDB event store + sync outbox
-  └── Service worker for offline
+```text
+React / Vite / TypeScript
+  ├─ learner: catalog, diagnostic, lesson/practice, tutor, progress
+  ├─ teacher: cohort, learners, misconception clusters, interventions
+  └─ API clients only for dynamic educational data
 
-FastAPI Backend (Python 3.12)
-  ├── Curriculum Registry (concepts, prerequisites, questions, rubrics)
-  ├── Assessment Service (scoring, misconception tagging)
-  ├── Learner Model (BKT mastery updates)
-  ├── Diagnosis Engine (root-gap inference via concept graph)
-  ├── Recommendation Engine (adaptive sequencing)
-  ├── Tutor Orchestrator (Socratic/direct policy + LLM gateway)
-  ├── Teacher Analytics (read models, cohort aggregation)
-  └── Sync Service (idempotent event sync)
+FastAPI
+  ├─ catalog endpoints
+  ├─ deterministic scoring + misconception mapping
+  ├─ BKT-style mastery logic
+  ├─ tutor orchestration and structured fallback responses
+  ├─ progress evidence endpoints
+  └─ teacher cohort/read-model endpoints
 
-PostgreSQL
-  ├── Curriculum tables (sources, subjects, units, concepts)
-  ├── Learner event tables (attempts, mastery states, sessions)
-  └── Teacher read models (summaries, clusters)
+PostgreSQL 16
+  ├─ curriculum_sources, subjects, units, concepts
+  ├─ tutor_questions, tutor_sessions, mastery_history
+  └─ teacher_summaries, misconception_clusters
 ```
 
-## Key Data Contracts
+## Database and seeding contract
 
-### Concept Node
+- The sole schema/seed entry point is `backend/app/database.py::initialize_database()`.
+- The function must be safe to call repeatedly. Preserve real learner activity; do not truncate or overwrite it during normal startup.
+- Catalog source records and approved prototype analytics data are defined in this module and inserted only when their relevant database state is empty/updatable.
+- For a destructive local reset, explicitly ask the user before truncating learner/analytics tables. Never reset a shared/production database.
+- If a new feature needs data, first add the table and idempotent seed/query logic to `database.py`, then create API access, then consume that API from the frontend.
+- Do not add sample learner IDs or fallback score objects to frontend code. Test records may be defined in `backend/tests/tutor_analytics_fixtures.py`.
 
-```json
-{
-  "id": "eq.inverse_operations",
-  "label": "Inverse operations",
-  "grade": 8,
-  "prerequisites": ["num.signed_operations", "num.mul_div_fluency"],
-  "mastery_criterion": {
-    "min_probability": 0.78,
-    "min_independent_correct": 3
-  },
-  "misconceptions": ["eq.divide_only_constant", "eq.sign_not_transferred"]
-}
+## Environment and launch contract
+
+```bash
+cp .env.example .env
+./setup.sh       # first-time setup: Docker, deps, schema/seeds, tests/build
+./run-dev.sh     # regular development: Docker, schema/seeds, backend + frontend
 ```
 
-### Mastery State (BKT output per learner-concept pair)
+Windows equivalents: `setup.bat`, then `run-dev.bat`.
 
-```json
-{
-  "learner_id": "student-07",
-  "concept_id": "eq.inverse_operations",
-  "p_know": 0.62,
-  "evidence_count": 4,
-  "independent_correct_count": 1,
-  "recent_error_tags": ["eq.stops_before_division"],
-  "uncertainty": "medium"
-}
+- Docker Compose reads the root `.env`.
+- Backend explicitly loads the root `.env`.
+- Health endpoint: `GET /api/health`.
+- API docs: `/docs`.
+- Do not claim the app is running until the health check succeeds.
+
+## API/data expectations
+
+- `GET /api/catalog/subjects?grade=8`
+- `GET /api/catalog/subjects/{subject_slug}/units?grade=8`
+- `GET /api/catalog/units/{unit_slug}/concepts`
+- Tutor endpoints under `/api/tutor`
+- Progress endpoints under `/api/progress`
+- Teacher endpoints under `/api/teacher`
+
+API payloads should be typed, explicit about uncertainty, and usable for honest empty states. Never fabricate an API result in a page merely to make a screen look complete.
+
+## UI requirements
+
+- Visual premise: **a calm learning instrument where evidence becomes a clear path**.
+- Keep the PRISM signature/orbit as the primary decorative identity; avoid stacked, competing effects.
+- Palette direction: deep forest ink + mint signal, with yellow reserved for evidence/recommendation meaning. Avoid casual purple/blue accent sprawl.
+- Make the primary diagnostic CTA clear and high contrast.
+- Sidebar navigation must remain fixed/non-scrollable on dashboard layouts.
+- Landing/login/start screens should fit their viewport without document scrolling.
+- Use loading, empty, error, focus, and mobile layouts as first-class states.
+
+## Required verification before reporting completion
+
+Run the checks relevant to edited code and report real results:
+
+```bash
+cd backend && .venv/bin/python -m pytest tests/ -q
+cd frontend && npm test -- --reporter=dot && npm run build
+cd .. && git diff --check
 ```
 
-### Tutor Response (structured output)
+For launcher/database changes also verify that PostgreSQL is healthy, call `initialize_database()`, and query non-sensitive row counts. Never print secrets from `.env`.
 
-```json
-{
-  "response_mode": "socratic_hint",
-  "message": "What should happen to both sides before x is alone?",
-  "concept_ids": ["eq.inverse_operations"],
-  "citation_ids": ["LE-02"],
-  "confidence": "medium",
-  "next_action": "await_learner_attempt",
-  "safety_flags": []
-}
-```
+## Remaining work (priority order)
 
-### Mastery Presentation Bands
+1. Build real diagnostic session/attempt APIs and persist learner evidence.
+2. Connect diagnostic answers to deterministic misconception, mastery, root-gap, and remediation sequencing.
+3. Replace remaining placeholder learning/lesson surfaces with API-backed learner flows and honest empty states.
+4. Add durable learner identity/auth or a safe learner-selection workflow; remove manual learner-ID input when identity is available.
+5. Persist teacher read models from actual learner events rather than prototype seed records.
+6. Add offline-first cache, IndexedDB outbox, idempotent reconciliation, and sync status UI.
+7. Add curriculum authoring/import workflow for tutor questions and remediation content; do not rely on frontend hardcoding.
+8. Add bounded LLM augmentation only after deterministic fallbacks, citations, learner controls, and safety behavior are complete.
+9. Perform full desktop/mobile/reduced-motion visual QA plus end-to-end local-launch verification on macOS/Linux and Windows.
 
-| `p_know`                         | Learner sees                      | Teacher sees                                   |
-| -------------------------------- | --------------------------------- | ---------------------------------------------- |
-| `< 0.40`                         | "Let's rebuild this idea."        | "Needs prerequisite repair."                   |
-| `0.40–0.70`                      | "Getting there — one more check." | "Developing; evidence still limited."          |
-| `>= 0.70` + independent evidence | "Ready for the next challenge."   | "Likely mastered; confirm with transfer item." |
+## Key files
 
-## Existing Backend Files (DO NOT MODIFY)
-
-- `backend/app/main.py` — FastAPI entrypoint, health + catalog endpoints
-- `backend/app/scoring.py` — Deterministic numeric scoring with misconception tagging
-- `backend/app/mastery.py` — BKT mastery update (fixed parameters)
-- `backend/app/database.py` — PostgreSQL connection, schema init, catalog queries
-- `backend/app/curriculum.py` — Seed data: 3 subjects, 34 units, 102 concepts
-- `backend/tests/` — test_api.py, test_scoring.py, test_mastery.py, test_catalog_api.py
-
-## Existing Frontend Files (DO NOT MODIFY)
-
-- `frontend/src/App.tsx` — Router with 7 routes
-- `frontend/src/App.css` — Full design system
-- `frontend/src/pages/StartPage.tsx`, `DiagnosticPage.tsx`, `PlaceholderPage.tsx`
-- `frontend/src/pages/CatalogPage.tsx`, `SubjectPathPage.tsx`
-- `frontend/src/components/DashboardShell.tsx`, `PrismParticleField.tsx`, `PrismSignature.tsx`, `PageTransition.tsx`, `AgentPipeline.tsx`
-- `frontend/src/app/navigation.ts`
-
-## Deeper Reference Files
-
-- `SPEC_TUTOR_ANALYTICS.md` — Full technical specification for Tutor Analytics (370 lines)
-- `my_stuff/PRISM_Tutor_Analytics_Guide.md` — Tutor Analytics build guide (266 lines)
-- `research/applicable-patterns/FEATURE_PLAYBOOK.md` — Feature playbook (877 lines)
-- `notes/ONE_WEEK_PROTOTYPE_SCOPE.md` — Day-by-day scope and quality gates
-- `notes/PRISM_ARCHITECTURE_OBSERVATIONS.md` — Architecture and entity design
-- `research/agentic-ui/PRISM_AGENTIC_UI_PIPELINE.md` — UX pipeline patterns
+- `compose.yaml` — PostgreSQL 16 service.
+- `.env.example` — safe root environment template; actual `.env` is ignored.
+- `backend/app/database.py` — database URL, schema, idempotent seed data, catalog queries.
+- `backend/app/curriculum.py` — authored Grade 8 source-linked curriculum input.
+- `backend/app/main.py` — FastAPI entrypoint/router registration.
+- `backend/app/tutor.py`, `progress.py`, `teacher.py` — learning/analytics routes.
+- `backend/tests/` — backend tests; fixtures must remain test-only.
+- `frontend/src/api/` — typed API clients.
+- `frontend/src/pages/` — route pages; keep dynamic data API-backed.
+- `setup.sh`, `setup.bat`, `run-dev.sh`, `run-dev.bat` — installation and launch paths; must initialize the database.
+- `SPEC_TUTOR_ANALYTICS.md` — detailed tutor analytics specification.
+- `research/agentic-ui/PRISM_AGENTIC_UI_PIPELINE.md` — explainable agentic UX rationale.

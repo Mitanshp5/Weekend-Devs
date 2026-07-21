@@ -15,55 +15,43 @@ from app.tutor_analytics_models import initialize_tutor_analytics_tables
 
 router = APIRouter(prefix="/api/tutor", tags=["guidance"])
 
-# Concept-to-unit mapping for study recommendations
-CONCEPT_UNIT_MAP: dict[str, str] = {
-    # Math
-    "num.signed_operations": "rational-numbers",
-    "eq.inverse_operations": "linear-equations-in-one-variable",
-    "eq.multi_step": "linear-equations-in-one-variable",
-    "eq.word_translation": "linear-equations-in-one-variable",
-    "num.mul_div_fluency": "rational-numbers",
-    "math.rational_numbers": "rational-numbers",
-    "math.linear_equations": "linear-equations-in-one-variable",
-    "math.quadrilaterals": "understanding-quadrilaterals",
-    "math.data_handling": "data-handling",
-    "math.squares_roots": "squares-and-square-roots",
-    # Science
-    "sci.crop_production": "crop-production-and-management",
-    "sci.microorganisms": "microorganisms-friend-and-foe",
-    "sci.coal_petroleum": "coal-and-petroleum",
-    "sci.combustion_flame": "combustion-and-flame",
-    "sci.conservation": "conservation-of-plants-and-animals",
-    # English
-    "eng.christmas_present": "the-best-christmas-present",
-    "eng.tsunami": "the-tsunami",
-    "eng.glimpses_past": "glimpses-of-the-past",
-    "eng.bepin_choudhury": "bepin-choudhurys-lapse-of-memory",
-    "eng.summit_within": "the-summit-within",
-}
+# Lazy-loaded concept metadata from DB: concept_id -> {name, unit}
+_concept_cache: dict[str, dict] | None = None
 
-CONCEPT_FRIENDLY: dict[str, str] = {
-    "num.signed_operations": "Integer Operations",
-    "eq.inverse_operations": "Inverse Operations",
-    "eq.multi_step": "Multi-Step Equations",
-    "eq.word_translation": "Word Problems",
-    "num.mul_div_fluency": "Multiplication & Division",
-    "math.rational_numbers": "Rational Numbers",
-    "math.linear_equations": "Linear Equations",
-    "math.quadrilaterals": "Quadrilaterals",
-    "math.data_handling": "Data Handling",
-    "math.squares_roots": "Squares & Square Roots",
-    "sci.crop_production": "Crop Production",
-    "sci.microorganisms": "Microorganisms",
-    "sci.coal_petroleum": "Coal & Petroleum",
-    "sci.combustion_flame": "Combustion & Flame",
-    "sci.conservation": "Conservation",
-    "eng.christmas_present": "The Best Christmas Present",
-    "eng.tsunami": "The Tsunami",
-    "eng.glimpses_past": "Glimpses of the Past",
-    "eng.bepin_choudhury": "Bepin Choudhury",
-    "eng.summit_within": "The Summit Within",
-}
+
+def _load_concept_cache() -> dict[str, dict]:
+    """Load concept friendly names and unit slugs from the DB. Cached for the process lifetime."""
+    global _concept_cache
+    if _concept_cache is not None:
+        return _concept_cache
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT c.slug AS concept_slug, c.name AS concept_name, u.slug AS unit_slug
+                    FROM concepts c
+                    JOIN units u ON u.slug = c.unit_slug
+                    """
+                )
+                rows = cur.fetchall()
+        _concept_cache = {
+            r["concept_slug"]: {"name": r["concept_name"], "unit": r["unit_slug"]}
+            for r in rows
+        }
+    except Exception:
+        _concept_cache = {}
+    return _concept_cache
+
+
+def _concept_friendly(concept_id: str) -> str:
+    cache = _load_concept_cache()
+    return cache.get(concept_id, {}).get("name", concept_id)
+
+
+def _concept_unit(concept_id: str) -> str:
+    cache = _load_concept_cache()
+    return cache.get(concept_id, {}).get("unit", "the next unit")
 
 
 def _concept_subject(concept_id: str) -> str:
@@ -155,8 +143,8 @@ def _am_i_on_track(
     mastery_pct = round(len(mastered) / total * 100) if total else 0
     avg_p = round(sum(r["p_know"] for r in concept_rows) / total, 2)
 
-    strong_names = [CONCEPT_FRIENDLY.get(r["concept_id"], r["concept_id"]) for r in mastered[:3]]
-    weak_names = [CONCEPT_FRIENDLY.get(r["concept_id"], r["concept_id"]) for r in weak[:3]]
+    strong_names = [_concept_friendly(r["concept_id"]) for r in mastered[:3]]
+    weak_names = [_concept_friendly(r["concept_id"]) for r in weak[:3]]
 
     parts = []
     if mastery_pct >= 70:
@@ -173,7 +161,7 @@ def _am_i_on_track(
     if weak_names:
         parts.append(f"🔧 Focus areas: {', '.join(weak_names)}")
     if developing:
-        dev_names = [CONCEPT_FRIENDLY.get(r["concept_id"], r["concept_id"]) for r in developing[:2]]
+        dev_names = [_concept_friendly(r["concept_id"]) for r in developing[:2]]
         parts.append(f"🔄 Developing: {', '.join(dev_names)} — a few more correct answers will get you there!")
 
     return {
@@ -206,8 +194,8 @@ def _what_to_study_next(
     candidates = weak + developing
     if candidates:
         top = candidates[0]
-        name = CONCEPT_FRIENDLY.get(top["concept_id"], top["concept_id"])
-        unit = CONCEPT_UNIT_MAP.get(top["concept_id"], "the next unit")
+        name = _concept_friendly(top["concept_id"])
+        unit = _concept_unit(top["concept_id"])
         p = round(top["p_know"] * 100)
         return {
             "question_type": "what_to_study_next",
@@ -217,13 +205,13 @@ def _what_to_study_next(
 
     # All mastered — suggest new topics
     covered_ids = {r["concept_id"] for r in concept_rows}
-    uncovered = [cid for cid in CONCEPT_FRIENDLY if cid not in covered_ids]
+    uncovered = [cid for cid in _load_concept_cache() if cid not in covered_ids]
     if subject:
         uncovered = [cid for cid in uncovered if _concept_subject(cid) == subject]
 
     if uncovered:
         next_cid = uncovered[0]
-        name = CONCEPT_FRIENDLY.get(next_cid, next_cid)
+        name = _concept_friendly(next_cid)
         return {
             "question_type": "what_to_study_next",
             "message": f"🎉 Amazing — you've mastered everything you've attempted! Next up: **{name}**. Find it in the question list.",
@@ -246,7 +234,7 @@ def _recommend_practice(weak: list, developing: list) -> dict:
             "details": {"status": "no_weak_areas"},
         }
 
-    names = [CONCEPT_FRIENDLY.get(r["concept_id"], r["concept_id"]) for r in candidates[:4]]
+    names = [_concept_friendly(r["concept_id"]) for r in candidates[:4]]
     parts = ["Based on your performance, focus on these topics:"]
     for i, name in enumerate(names, 1):
         p = round(candidates[i - 1]["p_know"] * 100)

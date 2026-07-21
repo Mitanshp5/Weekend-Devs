@@ -13,8 +13,6 @@ import { DonutChart } from "../components/DonutChart";
 import {
   fetchProgress,
   fetchConceptEvidence,
-  fetchLearners,
-  type DemoLearner,
   type MasteryState,
   type TimelineEntry,
 } from "../api/tutorAnalytics";
@@ -71,26 +69,26 @@ export function ProgressPage() {
   const [concepts, setConcepts] = useState<MasteryState[]>([]);
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
-  const [learners, setLearners] = useState<DemoLearner[]>([]);
-  const STORAGE_KEY = "prism_selected_learner";
-  const [learnerId, setLearnerId] = useState(() => localStorage.getItem(STORAGE_KEY) ?? "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const timelineRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    fetchLearners()
-      .then((data) => {
-        setLearners(data.learners);
-        if (!learnerId && data.learners.length > 0) {
-          const defaultId = String(data.learners[0].id);
-          setLearnerId(defaultId);
-          localStorage.setItem(STORAGE_KEY, defaultId);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  /* Read active logged-in user session */
+  const currentAccount = (() => {
+    try {
+      const stored = localStorage.getItem("prism_user");
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {
+      // Ignore
+    }
+    return null;
+  })();
+
+  const learnerId = (currentAccount?.email || "aanya@prism.demo") as string;
+  const learnerName = (currentAccount?.username || currentAccount?.email?.split("@")[0] || "Learner") as string;
 
   useEffect(() => {
     if (!learnerId.trim()) {
@@ -117,7 +115,7 @@ export function ProgressPage() {
         setTimeout(() => timelineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
       })
       .catch(() => setTimeline([]));
-  }, []);
+  }, [learnerId]);
 
   const allSubjects = aggregateBySubject(concepts);
   const filtered =
@@ -141,31 +139,25 @@ export function ProgressPage() {
         <span>Analytics</span>
       </div>
 
-      <label className="mg-learner-input" style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
-        <span style={{ fontWeight: 600, fontSize: ".85rem", color: "#2d3436" }}>👤 Learner</span>
-        <select
-          value={learnerId}
-          onChange={(e) => {
-            setLearnerId(e.target.value);
-            localStorage.setItem(STORAGE_KEY, e.target.value);
-          }}
+      {/* Account Badge */}
+      <div style={{ margin: "0.4rem 0 1rem" }}>
+        <span
           style={{
-            padding: ".4rem .6rem",
-            borderRadius: ".4rem",
-            border: "1px solid #dfe6e9",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: ".4rem",
+            background: "rgba(85, 50, 133, 0.08)",
+            color: "#553285",
+            fontWeight: 600,
             fontSize: ".85rem",
-            minWidth: "180px",
-            cursor: "pointer",
+            padding: ".4rem .85rem",
+            borderRadius: ".6rem",
+            border: "1px solid rgba(85, 50, 133, 0.15)",
           }}
         >
-          <option value="">Select a student...</option>
-          {learners.map((l) => (
-            <option key={l.id} value={String(l.id)}>
-              {l.id}. {l.name}
-            </option>
-          ))}
-        </select>
-      </label>
+          👤 <strong>{learnerName}</strong> ({learnerId})
+        </span>
+      </div>
 
       <h1 style={{ maxWidth: "20ch", fontSize: "clamp(2rem, 4vw, 3rem)" }}>
         Analytics

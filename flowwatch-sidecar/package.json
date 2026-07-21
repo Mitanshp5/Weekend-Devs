@@ -1,0 +1,16 @@
+{
+  "name": "flowwatch-sidecar",
+  "version": "1.0.0",
+  "description": "FlowWatch sidecar server for PRISM backend",
+  "main": "sidecar.js",
+  "type": "module",
+  "scripts": {
+    "start": "node sidecar.js"
+  },
+  "dependencies": {
+    "@pranshulsoni/flowwatch": "^3.1.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

@@ -6,8 +6,6 @@ import httpx
 from app.database import database_url
 from app.main import app
 
-DATABASE_URL = os.getenv("PRISM_DATABASE_URL", "postgresql://prism:prism_dev_only@127.0.0.1:5432/prism")
-
 
 def request(path: str) -> httpx.Response:
     async def send_request() -> httpx.Response:
@@ -19,14 +17,13 @@ def request(path: str) -> httpx.Response:
 
 
 def test_database_url_uses_postgresql_configuration(monkeypatch) -> None:
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+    test_url = "postgresql://prism:prism_dev_only@127.0.0.1:5432/prism_custom"
+    monkeypatch.setenv("PRISM_DATABASE_URL", test_url)
 
-    assert database_url() == DATABASE_URL
+    assert database_url() == test_url
 
 
-def test_catalog_returns_full_grade_8_subjects_from_seeded_database(monkeypatch) -> None:
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
-
+def test_catalog_returns_full_grade_8_subjects_from_seeded_database() -> None:
     response = request("/api/catalog/subjects?grade=8")
 
     assert response.status_code == 200
@@ -40,9 +37,7 @@ def test_catalog_returns_full_grade_8_subjects_from_seeded_database(monkeypatch)
     }
 
 
-def test_catalog_returns_source_linked_units_and_concepts(monkeypatch) -> None:
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
-
+def test_catalog_returns_source_linked_units_and_concepts() -> None:
     response = request("/api/catalog/subjects/mathematics/units?grade=8")
 
     assert response.status_code == 200
@@ -57,9 +52,7 @@ def test_catalog_returns_source_linked_units_and_concepts(monkeypatch) -> None:
     }
 
 
-def test_catalog_returns_concepts_for_a_unit(monkeypatch) -> None:
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
-
+def test_catalog_returns_concepts_for_a_unit() -> None:
     response = request("/api/catalog/units/rational-numbers/concepts")
 
     assert response.status_code == 200
@@ -68,3 +61,4 @@ def test_catalog_returns_concepts_for_a_unit(monkeypatch) -> None:
         "Operations on rational numbers",
         "Rational numbers on a number line",
     ]
+
