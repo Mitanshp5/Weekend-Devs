@@ -2064,8 +2064,10 @@ h1.auth-header-title {
 .overview-hero h1 { font-size: clamp(3.4rem, 7vw, 6.8rem); }
 .overview-hero__copy > p:not(.eyebrow), .overview-section__body > p, .overview-closing p { max-width: 43rem; color: #c1d4c8; font-size: 1.02rem; line-height: 1.7; }
 .overview-hero__actions { margin-top: 2rem; flex-wrap: wrap; align-items: flex-start; }
-.overview-primary-cta { flex: 0 1 21rem; width: min(100%, 21rem); min-width: 0; }
+.overview-primary-cta { flex: 0 1 21rem; width: min(100%, 21rem); min-width: 0; transition: transform 180ms var(--ease-out), background-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out); }
+.overview-primary-cta::before, .overview-primary-cta::after { display: none; }
 .overview-primary-cta .text { white-space: nowrap; font-size: clamp(.7rem, 1vw, .92rem); letter-spacing: .09em; }
+@media (hover: hover) and (pointer: fine) { .overview-primary-cta:hover { background: #173a2c; transform: translateY(-2px); }.overview-primary-cta:hover .text { color: var(--lime); } }
 .overview-text-link { color: var(--mint); white-space: nowrap; }
 .overview-hero__orbit { min-height: 27rem; }
 .prism-learning-orbit { position: relative; display: grid; width: min(100%, 34rem); aspect-ratio: 1; place-items: center; margin: 0 auto; }
