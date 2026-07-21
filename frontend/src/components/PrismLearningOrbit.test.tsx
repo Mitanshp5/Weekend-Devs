@@ -7,6 +7,7 @@ describe("PrismLearningOrbit", () => {
     render(<PrismLearningOrbit state="conceptGraph" />);
 
     expect(screen.getByTestId("prism-learning-orbit-svg")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("orbit-highlight").tagName).toBe("ellipse");
     expect(screen.getByText("Observe")).toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
     expect(screen.getByText("Guide")).toBeInTheDocument();

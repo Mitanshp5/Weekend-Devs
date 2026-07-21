@@ -11,9 +11,8 @@ const orbitNodes: OrbitNode[] = [
   { id: "verify", label: "Verify", x: 32, y: 76 },
 ];
 
-const orbitPaths = [
+const mintOrbitPaths = [
   "M 58 14 C 82 14 91 35 84 53 C 77 73 47 86 25 72 C 5 59 13 29 35 19 C 42 16 50 14 58 14 Z",
-  "M 23 45 C 31 12 74 8 89 34 C 102 58 73 88 40 82 C 14 77 4 58 23 45 Z",
   "M 15 53 C 21 27 50 9 76 22 C 100 34 94 68 69 81 C 41 96 8 78 15 53 Z",
 ];
 
@@ -32,7 +31,8 @@ export function PrismLearningOrbit({ state = "ambient", reducedMotion = false }:
         </defs>
         <motion.circle cx="50" cy="50" r="26" fill="url(#prism-orbit-core)" animate={isStatic ? undefined : { scale: [0.94, 1.05, 0.94], opacity: [0.65, 1, 0.65] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} />
         <g filter="url(#prism-orbit-glow)">
-          {orbitPaths.map((path, index) => <motion.path key={path} d={path} fill="none" stroke={index === 1 ? "#dff28a" : "#91ddc4"} strokeWidth="0.55" strokeLinecap="round" opacity={isSplit ? 0.88 : 0.62} animate={isStatic ? undefined : { rotate: index % 2 ? 360 : -360 }} transition={{ duration: 18 + index * 4, repeat: Infinity, ease: "linear" }} style={{ transformOrigin: "50px 50px" }} />)}
+          <motion.ellipse data-testid="orbit-highlight" cx="50" cy="50" rx="39" ry="28" transform="rotate(28 50 50)" fill="none" stroke="#dff28a" strokeWidth="0.55" strokeLinecap="round" opacity={isSplit ? 0.88 : 0.62} animate={isStatic ? undefined : { opacity: [0.55, 0.82, 0.55] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} />
+          {mintOrbitPaths.map((path, index) => <motion.path key={path} d={path} fill="none" stroke="#91ddc4" strokeWidth="0.55" strokeLinecap="round" opacity={isSplit ? 0.88 : 0.62} animate={isStatic ? undefined : { rotate: index ? 360 : -360 }} transition={{ duration: 18 + index * 4, repeat: Infinity, ease: "linear" }} style={{ transformOrigin: "50px 50px" }} />)}
           {isGraph && orbitNodes.map((node, index) => <motion.line key={`edge-${node.id}`} x1="50" y1="50" x2={node.x} y2={node.y} stroke="#91ddc4" strokeWidth="0.32" opacity=".7" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.55, delay: index * 0.08 }} />)}
           {orbitNodes.map((node, index) => <motion.circle key={node.id} data-testid={`orbit-node-${node.id}`} cx={node.x} cy={node.y} r={isGraph ? "2.5" : "1.8"} fill={index === 1 ? "#dff28a" : "#91ddc4"} style={{ transformOrigin: `${node.x}px ${node.y}px` }} animate={isStatic ? undefined : { opacity: [0.55, 1, 0.55], scale: [0.85, 1.25, 0.85] }} transition={{ duration: 3.5 + index, repeat: Infinity, ease: "easeInOut" }} />)}
         </g>
