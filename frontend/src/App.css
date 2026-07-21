@@ -1683,3 +1683,392 @@ h1.auth-header-title {
   font-weight: 600;
 }
 
+/* Theme-adapted Arrow Action Button (Sign In / Sign Up) */
+.Btn-Container {
+  display: flex;
+  width: 190px;
+  height: 52px;
+  background: linear-gradient(135deg, rgba(23, 58, 44, 0.95) 0%, rgba(16, 40, 30, 0.98) 100%);
+  border-radius: 40px;
+  box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(223, 242, 138, 0.15);
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(145, 221, 196, 0.35);
+  padding: 0 16px 0 4px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.Btn-Container.icon-right {
+  padding: 0 4px 0 16px;
+}
+
+.Btn-Container.full-width {
+  width: 100%;
+}
+
+.Btn-Container:hover:not(:disabled) {
+  border-color: var(--lime);
+  box-shadow: 0px 8px 25px rgba(223, 242, 138, 0.35), inset 0 0 12px rgba(223, 242, 138, 0.1);
+  background: linear-gradient(135deg, rgba(30, 72, 55, 0.98) 0%, rgba(20, 48, 36, 0.98) 100%);
+}
+
+.Btn-Container:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.Btn-Container .icon-Container {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--lime) 0%, var(--mint) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 3px solid #10281e;
+  box-shadow: 0 0 10px rgba(223, 242, 138, 0.3);
+  flex-shrink: 0;
+}
+
+.Btn-Container .text {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f4f7ef;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  transition: color 0.2s ease, opacity 0.3s ease;
+}
+
+.Btn-Container .text.text-fading {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.Btn-Container:hover:not(:disabled) .text {
+  color: var(--lime);
+}
+
+.Btn-Container .icon-Container svg {
+  transition-duration: 0.3s;
+}
+
+.Btn-Container:hover:not(:disabled) .icon-Container svg {
+  animation: arrow 1s linear infinite;
+}
+
+@keyframes arrow {
+  0% {
+    opacity: 0.2;
+    margin-left: 0px;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+    margin-left: 8px;
+  }
+}
+
+/* Screen Tear Transition Overlay Styles */
+.screen-tear-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.screen-tear-bg {
+  position: absolute;
+  inset: 0;
+  background: #10281e;
+  z-index: 1;
+}
+
+.screen-tear-half {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  will-change: transform;
+}
+
+.screen-tear-half .icon-Container {
+  opacity: 0 !important;
+}
+
+.screen-tear-half-top {
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.7));
+}
+
+.screen-tear-half-bottom {
+  filter: drop-shadow(0 -6px 12px rgba(0, 0, 0, 0.7));
+}
+
+.screen-tear-line {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--lime) 0%, var(--mint) 50%, var(--lime) 100%);
+  box-shadow: 0 0 20px var(--lime), 0 0 40px var(--mint);
+  z-index: 4;
+  will-change: width, opacity;
+}
+
+.screen-tear-arrow {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--lime) 0%, var(--mint) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 3px solid #10281e;
+  box-shadow: 0 0 25px var(--lime), 0 0 45px var(--mint);
+  z-index: 5;
+  will-change: transform;
+}
+
+
+/* Theme-adapted Flip Action Button (.btn-17) for Start Diagnostic */
+.btn-17,
+.btn-17 *,
+.btn-17 :after,
+.btn-17 :before,
+.btn-17:after,
+.btn-17:before {
+  border: 0 solid;
+  box-sizing: border-box;
+}
+
+.btn-17 {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: button;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 190px;
+  height: 52px;
+  background-color: var(--lime);
+  background-image: none;
+  color: #10281e;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  line-height: 1.5;
+  margin: 0;
+  -webkit-mask-image: -webkit-radial-gradient(#000, #fff);
+  padding: 0;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 40px;
+  border: 1px solid var(--lime);
+  box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.35), 0 0 15px rgba(223, 242, 138, 0.25);
+  z-index: 0;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-17:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.btn-17,
+.btn-17 .text-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.btn-17 .text-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #10281e;
+}
+
+.btn-17 .text {
+  display: block;
+  position: relative;
+  z-index: 2;
+  transition: color 0.35s ease;
+}
+
+.btn-17:hover .text {
+  color: #ffffff;
+}
+
+.btn-17:after,
+.btn-17:before {
+  --skew: 0.2;
+  background: #173a2c;
+  content: "";
+  display: block;
+  height: 102%;
+  left: calc(-50% - 50% * var(--skew));
+  pointer-events: none;
+  position: absolute;
+  top: -104%;
+  transform: skew(calc(150deg * var(--skew))) translateY(var(--progress, 0));
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+}
+
+.btn-17:after {
+  --progress: 0%;
+  left: calc(50% + 50% * var(--skew));
+  top: 102%;
+  z-index: -1;
+}
+
+.btn-17:hover:before {
+  --progress: 100%;
+}
+
+.btn-17:hover:after {
+  --progress: -102%;
+}
+
+.btn-17:hover {
+  border-color: rgba(145, 221, 196, 0.5);
+  box-shadow: 0px 8px 25px rgba(223, 242, 138, 0.45), inset 0 0 12px rgba(223, 242, 138, 0.2);
+}
+
+/* Neon Checkbox Component (PRISM Theme) */
+.checkbox-wrapper {
+  --checkbox-size: 24px;
+  --checkbox-color: var(--lime);
+  --checkbox-shadow: rgba(223, 242, 138, 0.35);
+  --checkbox-border: rgba(145, 221, 196, 0.45);
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+
+.checkbox-wrapper.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkbox-wrapper input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkbox-wrapper .checkmark {
+  position: relative;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  border: 2px solid var(--checkbox-border);
+  border-radius: 8px;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(16, 40, 30, 0.75);
+  box-shadow: 0 0 12px var(--checkbox-shadow);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.checkbox-wrapper .checkmark::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, var(--lime), var(--mint));
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transform: scale(0) rotate(-45deg);
+}
+
+.checkbox-wrapper input:checked ~ .checkmark::before {
+  opacity: 1;
+  transform: scale(1) rotate(0);
+}
+
+.checkbox-wrapper .checkmark svg {
+  width: 0;
+  height: 0;
+  color: #10281e;
+  z-index: 1;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
+}
+
+.checkbox-wrapper input:checked ~ .checkmark svg {
+  width: 16px;
+  height: 16px;
+  transform: rotate(360deg);
+}
+
+.checkbox-wrapper:hover:not(.disabled) .checkmark {
+  border-color: var(--checkbox-color);
+  transform: scale(1.08);
+  box-shadow:
+    0 0 15px var(--checkbox-shadow),
+    0 0 30px var(--checkbox-shadow),
+    inset 0 0 10px rgba(223, 242, 138, 0.2);
+}
+
+.checkbox-wrapper input:checked ~ .checkmark {
+  animation: checkbox-pulse 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes checkbox-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 15px var(--checkbox-shadow);
+  }
+  50% {
+    transform: scale(0.92);
+    box-shadow:
+      0 0 25px var(--checkbox-shadow),
+      0 0 40px var(--checkbox-shadow);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 15px var(--checkbox-shadow);
+  }
+}
+
+.checkbox-wrapper .label {
+  margin-left: 12px;
+  font-family: inherit;
+  color: #cbdbd2;
+  font-size: 0.88rem;
+  font-weight: 600;
+  opacity: 0.9;
+  transition: all 0.3s;
+}
+
+.checkbox-wrapper:hover:not(.disabled) .label {
+  opacity: 1;
+  color: #f4f7ef;
+  transform: translateX(3px);
+}
+
+
+
+
+
+
