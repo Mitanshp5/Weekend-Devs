@@ -1,17 +1,11 @@
 """Tests for Tutor Analytics progress evidence endpoints."""
 
 import asyncio
-import os
 
 import httpx
 
 from app.main import app as tutor_analytics_app
 from tests.tutor_analytics_fixtures import seed_tutor_analytics_data
-
-DATABASE_URL = os.getenv(
-    "PRISM_DATABASE_URL",
-    "postgresql://prism:prism_dev_only@127.0.0.1:5432/prism",
-)
 
 
 def request(path: str) -> httpx.Response:
@@ -23,12 +17,10 @@ def request(path: str) -> httpx.Response:
 
 
 def setup_module():
-    os.environ.setdefault("PRISM_DATABASE_URL", DATABASE_URL)
     seed_tutor_analytics_data()
 
 
-def test_progress_returns_concepts_for_learner(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_progress_returns_concepts_for_learner():
     resp = request("/api/progress/test-learner-1")
     assert resp.status_code == 200
     body = resp.json()
@@ -41,8 +33,7 @@ def test_progress_returns_concepts_for_learner(monkeypatch):
     assert "teacher_message" in concept
 
 
-def test_progress_returns_band_classification(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_progress_returns_band_classification():
     resp = request("/api/progress/student-04")
     assert resp.status_code == 200
     body = resp.json()
@@ -52,8 +43,7 @@ def test_progress_returns_band_classification(monkeypatch):
         assert high_mastery[0]["band"] == "ready_for_extension"
 
 
-def test_progress_evidence_timeline(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_progress_evidence_timeline():
     resp = request("/api/progress/test-learner-2/concept/eq.inverse_operations")
     assert resp.status_code == 200
     body = resp.json()
@@ -64,8 +54,7 @@ def test_progress_evidence_timeline(monkeypatch):
     assert timestamps == sorted(timestamps)
 
 
-def test_progress_200_for_unknown_learner(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_progress_200_for_unknown_learner():
     resp = request("/api/progress/nonexistent-student")
     assert resp.status_code == 200
     body = resp.json()
@@ -73,7 +62,7 @@ def test_progress_200_for_unknown_learner(monkeypatch):
     assert body["concepts"] == []
 
 
-def test_progress_404_for_unknown_concept(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_progress_404_for_unknown_concept():
     resp = request("/api/progress/test-learner-1/concept/nonexistent.concept")
     assert resp.status_code == 404
+

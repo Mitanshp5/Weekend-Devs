@@ -1,17 +1,11 @@
 """Tests for Tutor Analytics tutor orchestrator endpoints."""
 
 import asyncio
-import os
 
 import httpx
 
 from app.main import app as tutor_analytics_app
 from tests.tutor_analytics_fixtures import seed_tutor_analytics_data
-
-DATABASE_URL = os.getenv(
-    "PRISM_DATABASE_URL",
-    "postgresql://prism:prism_dev_only@127.0.0.1:5432/prism",
-)
 
 
 def request(method: str, path: str, **kwargs) -> httpx.Response:
@@ -23,14 +17,12 @@ def request(method: str, path: str, **kwargs) -> httpx.Response:
 
 
 def setup_module():
-    os.environ.setdefault("PRISM_DATABASE_URL", DATABASE_URL)
     seed_tutor_analytics_data()
 
 
 # -- Fallback tests --
 
-def test_tutor_fallback_returns_socratic_hint_for_attempt_0(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_fallback_returns_socratic_hint_for_attempt_0():
     resp = request("get", "/api/tutor/fallback/q.eq.03?attempt=0")
     assert resp.status_code == 200
     body = resp.json()
@@ -40,8 +32,7 @@ def test_tutor_fallback_returns_socratic_hint_for_attempt_0(monkeypatch):
     assert len(body["concept_ids"]) > 0
 
 
-def test_tutor_fallback_escalates_to_explain_error_on_attempt_1(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_fallback_escalates_to_explain_error_on_attempt_1():
     resp = request(
         "get",
         "/api/tutor/fallback/q.eq.03?attempt=1&error_tag=eq.stops_before_division",
@@ -51,16 +42,14 @@ def test_tutor_fallback_escalates_to_explain_error_on_attempt_1(monkeypatch):
     assert body["response_mode"] == "explain_error"
 
 
-def test_tutor_fallback_escalates_to_worked_step_on_attempt_2(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_fallback_escalates_to_worked_step_on_attempt_2():
     resp = request("get", "/api/tutor/fallback/q.eq.03?attempt=2")
     assert resp.status_code == 200
     body = resp.json()
     assert body["response_mode"] == "worked_step"
 
 
-def test_tutor_fallback_gives_direct_explanation_on_attempt_3(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_fallback_gives_direct_explanation_on_attempt_3():
     resp = request("get", "/api/tutor/fallback/q.eq.03?attempt=3")
     assert resp.status_code == 200
     body = resp.json()
@@ -68,16 +57,14 @@ def test_tutor_fallback_gives_direct_explanation_on_attempt_3(monkeypatch):
     assert body["next_action"] == "show_transfer_question"
 
 
-def test_tutor_fallback_404_for_unknown_question(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_fallback_404_for_unknown_question():
     resp = request("get", "/api/tutor/fallback/q.nonexistent?attempt=0")
     assert resp.status_code == 404
 
 
 # -- POST /tutor/respond tests --
 
-def test_tutor_respond_persists_session(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_respond_persists_session():
     resp = request(
         "post",
         "/api/tutor/respond",
@@ -95,8 +82,7 @@ def test_tutor_respond_persists_session(monkeypatch):
 
 # -- Questions list --
 
-def test_tutor_lists_available_questions(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_lists_available_questions():
     resp = request("get", "/api/tutor/questions")
     assert resp.status_code == 200
     body = resp.json()
@@ -105,8 +91,7 @@ def test_tutor_lists_available_questions(monkeypatch):
 
 # -- Answer validation and hint requests tests --
 
-def test_tutor_respond_correct_answer(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_respond_correct_answer():
     # Question q.eq.03 expected is "7"
     resp = request(
         "post",
@@ -125,8 +110,7 @@ def test_tutor_respond_correct_answer(monkeypatch):
     assert body["next_action"] == "show_transfer_question"
 
 
-def test_tutor_respond_incorrect_answer(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_respond_incorrect_answer():
     # Question q.eq.03 expected is "7". Throwing in "-7" mapping to eq.sign_not_transferred
     resp = request(
         "post",
@@ -145,8 +129,7 @@ def test_tutor_respond_incorrect_answer(monkeypatch):
     assert body["error_tag"] == "eq.sign_not_transferred"
 
 
-def test_tutor_respond_direct_hint_request(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_tutor_respond_direct_hint_request():
     # No learner_answer provided
     resp = request(
         "post",
@@ -162,4 +145,5 @@ def test_tutor_respond_direct_hint_request(monkeypatch):
     body = resp.json()
     assert body["response_mode"] == "worked_step"
     assert body["is_correct"] is False
+
 

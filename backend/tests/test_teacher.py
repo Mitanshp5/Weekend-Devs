@@ -1,17 +1,11 @@
 """Tests for Tutor Analytics teacher dashboard endpoints."""
 
 import asyncio
-import os
 
 import httpx
 
 from app.main import app as tutor_analytics_app
 from tests.tutor_analytics_fixtures import seed_tutor_analytics_data
-
-DATABASE_URL = os.getenv(
-    "PRISM_DATABASE_URL",
-    "postgresql://prism:prism_dev_only@127.0.0.1:5432/prism",
-)
 
 
 def request(path: str) -> httpx.Response:
@@ -23,12 +17,10 @@ def request(path: str) -> httpx.Response:
 
 
 def setup_module():
-    os.environ.setdefault("PRISM_DATABASE_URL", DATABASE_URL)
     seed_tutor_analytics_data()
 
 
-def test_cohort_returns_band_distribution(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_cohort_returns_band_distribution():
     resp = request("/api/teacher/cohort?grade=8")
     assert resp.status_code == 200
     body = resp.json()
@@ -38,8 +30,7 @@ def test_cohort_returns_band_distribution(monkeypatch):
     assert isinstance(body["band_distribution"], dict)
 
 
-def test_cohort_returns_clusters_ranked_by_impact(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_cohort_returns_clusters_ranked_by_impact():
     resp = request("/api/teacher/cohort?grade=8")
     body = resp.json()
     clusters = body["top_clusters"]
@@ -49,8 +40,7 @@ def test_cohort_returns_clusters_ranked_by_impact(monkeypatch):
     assert scores == sorted(scores, reverse=True)
 
 
-def test_cohort_returns_intervention_recommendations(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_cohort_returns_intervention_recommendations():
     resp = request("/api/teacher/cohort?grade=8")
     body = resp.json()
     recs = body["intervention_recommendations"]
@@ -58,8 +48,7 @@ def test_cohort_returns_intervention_recommendations(monkeypatch):
     assert "recommended_action" in recs[0]
 
 
-def test_student_card_returns_full_data(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_student_card_returns_full_data():
     resp = request("/api/teacher/student/test-learner-2")
     assert resp.status_code == 200
     body = resp.json()
@@ -69,14 +58,12 @@ def test_student_card_returns_full_data(monkeypatch):
     assert body["recommended_action"] is not None
 
 
-def test_student_card_404_for_unknown(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_student_card_404_for_unknown():
     resp = request("/api/teacher/student/nonexistent")
     assert resp.status_code == 404
 
 
-def test_clusters_endpoint_returns_ranked_list(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_clusters_endpoint_returns_ranked_list():
     resp = request("/api/teacher/clusters?grade=8")
     assert resp.status_code == 200
     body = resp.json()
@@ -86,10 +73,10 @@ def test_clusters_endpoint_returns_ranked_list(monkeypatch):
     assert scores == sorted(scores, reverse=True)
 
 
-def test_clusters_include_suggested_intervention(monkeypatch):
-    monkeypatch.setenv("PRISM_DATABASE_URL", DATABASE_URL)
+def test_clusters_include_suggested_intervention():
     resp = request("/api/teacher/clusters?grade=8")
     body = resp.json()
     for cluster in body["clusters"]:
         assert "suggested_intervention" in cluster
         assert cluster["suggested_intervention"] is not None
+

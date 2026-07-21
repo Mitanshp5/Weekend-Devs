@@ -2,6 +2,9 @@ import os
 import pytest
 import psycopg
 
+from app.database import initialize_database
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     # Parse existing database URL
@@ -27,4 +30,6 @@ def setup_test_database():
         
     # Set the test database URL as active for all tests to protect dev database from TRUNCATE queries
     os.environ["PRISM_DATABASE_URL"] = test_db_url
+    initialize_database()
     yield
+
