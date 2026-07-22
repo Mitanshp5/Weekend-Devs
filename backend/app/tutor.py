@@ -540,20 +540,51 @@ def tutor_respond(req: TutorRequest) -> dict:
 _MERGED_BANK: dict[str, dict[str, Any]] = {**QUESTION_BANK, **ALL_SUBJECT_QUESTIONS}
 
 
+def _question_subject(concept_id: str) -> str:
+    """Return subject string from concept_id prefix."""
+    if concept_id.startswith(("math.", "num.", "eq.")):
+        return "mathematics"
+    if concept_id.startswith("sci."):
+        return "science"
+    if concept_id.startswith("eng."):
+        return "english"
+    return "unknown"
+
+
+# Friendly chapter names for every concept_id used in the question bank
+CONCEPT_FRIENDLY_NAMES: dict[str, str] = {
+    # Math
+    "num.signed_operations": "Integer Operations (Signed Numbers)",
+    "eq.inverse_operations": "Basic Equations (Inverse Operations)",
+    "eq.multi_step": "Multi-Step Equations",
+    "eq.word_translation": "Word Problems (Equation Translation)",
+    "num.mul_div_fluency": "Multiplication & Division Fluency",
+    "math.rational_numbers": "Rational Numbers",
+    "math.linear_equations": "Linear Equations in One Variable",
+    "math.quadrilaterals": "Understanding Quadrilaterals",
+    "math.data_handling": "Data Handling",
+    "math.squares_roots": "Squares and Square Roots",
+    # Science
+    "sci.crop_production": "Crop Production and Management",
+    "sci.microorganisms": "Microorganisms: Friend and Foe",
+    "sci.coal_petroleum": "Coal and Petroleum",
+    "sci.combustion_flame": "Combustion and Flame",
+    "sci.conservation": "Conservation of Plants and Animals",
+    # English
+    "eng.christmas_present": "The Best Christmas Present",
+    "eng.tsunami": "The Tsunami",
+    "eng.glimpses_past": "Glimpses of the Past",
+    "eng.bepin_choudhury": "Bepin Choudhury's Lapse of Memory",
+    "eng.summit_within": "The Summit Within",
+}
+
+
 @router.get("/questions")
 def list_questions(subject: str | None = None) -> dict:
     """Return all available questions, optionally filtered by subject."""
     all_qs = list(_MERGED_BANK.values())
     if subject:
-        def _subj(cid: str) -> str:
-            if cid.startswith(("math.", "num.", "eq.")):
-                return "mathematics"
-            if cid.startswith("sci."):
-                return "science"
-            if cid.startswith("eng."):
-                return "english"
-            return "unknown"
-        all_qs = [q for q in all_qs if _subj(q["concept_id"]) == subject]
+        all_qs = [q for q in all_qs if _question_subject(q["concept_id"]) == subject]
     return {
         "questions": [
             {
@@ -562,7 +593,10 @@ def list_questions(subject: str | None = None) -> dict:
                 "prompt": q["prompt"],
                 "difficulty": q["difficulty"],
                 "answer_type": q.get("answer_type", "numeric"),
+                "question_type": q.get("answer_type", "numeric"),
                 "options": q.get("options"),
+                "chapter_name": CONCEPT_FRIENDLY_NAMES.get(q["concept_id"], q["concept_id"]),
+                "subject": _question_subject(q["concept_id"]),
             }
             for q in all_qs
         ]

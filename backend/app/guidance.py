@@ -140,29 +140,48 @@ def _am_i_on_track(
         }
 
     total = len(concept_rows)
-    mastery_pct = round(len(mastered) / total * 100) if total else 0
-    avg_p = round(sum(r["p_know"] for r in concept_rows) / total, 2)
 
-    strong_names = [_concept_friendly(r["concept_id"]) for r in mastered[:3]]
-    weak_names = [_concept_friendly(r["concept_id"]) for r in weak[:3]]
+    # Calculate average p_know for overall understanding level
+    avg_p = sum(r["p_know"] for r in concept_rows) / total
+
+    # Determine overall understanding level label
+    if avg_p >= 0.70:
+        level_label = "Strong"
+        level_emoji = "🟢"
+        level_desc = "You have a solid grasp of the concepts you've studied."
+    elif avg_p >= 0.40:
+        level_label = "Developing"
+        level_emoji = "🟡"
+        level_desc = "You're building understanding — keep practicing to strengthen your skills."
+    else:
+        level_label = "Needs Practice"
+        level_emoji = "🔴"
+        level_desc = "You're just getting started — more practice will help these concepts click."
 
     parts = []
-    if mastery_pct >= 70:
-        parts.append(f"📈 Great progress! You've mastered {len(mastered)} of {total} concepts ({mastery_pct}%).")
-    elif mastery_pct >= 40:
-        parts.append(f"📊 You're making progress — {len(mastered)} of {total} concepts mastered ({mastery_pct}%). Keep going!")
-    else:
-        parts.append(f"📋 You've covered {total} concepts so far with {mastery_pct}% mastery.")
 
-    parts.append(f"Questions attempted: {total_q} | Hints used: {total_hints}")
+    # Lead with encouragement and understanding level
+    parts.append(f"{level_emoji} Understanding Level: **{level_label}**")
+    parts.append(level_desc)
 
-    if strong_names:
+    # Natural language stats
+    if total_q > 0:
+        parts.append(f"📝 You've attempted {total_q} question{'s' if total_q != 1 else ''} across {total} concept{'s' if total != 1 else ''}, using {total_hints} hint{'s' if total_hints != 1 else ''}.")
+
+    # Strong topics with friendly names
+    if mastered:
+        strong_names = [_concept_friendly(r["concept_id"]) for r in mastered[:3]]
         parts.append(f"💪 Strong topics: {', '.join(strong_names)}")
-    if weak_names:
-        parts.append(f"🔧 Focus areas: {', '.join(weak_names)}")
+
+    # Developing topics with friendly names
     if developing:
-        dev_names = [_concept_friendly(r["concept_id"]) for r in developing[:2]]
-        parts.append(f"🔄 Developing: {', '.join(dev_names)} — a few more correct answers will get you there!")
+        dev_names = [_concept_friendly(r["concept_id"]) for r in developing[:3]]
+        parts.append(f"🔄 Getting there: {', '.join(dev_names)} — a few more correct answers will level these up!")
+
+    # Weak topics with friendly names
+    if weak:
+        weak_names = [_concept_friendly(r["concept_id"]) for r in weak[:3]]
+        parts.append(f"🔧 Focus areas: {', '.join(weak_names)} — try more practice questions on these topics.")
 
     return {
         "question_type": "am_i_on_track",
@@ -172,7 +191,8 @@ def _am_i_on_track(
             "mastered": len(mastered),
             "developing": len(developing),
             "weak": len(weak),
-            "avg_mastery": avg_p,
+            "understanding_level": level_label,
+            "avg_p_know": round(avg_p, 2),
             "questions_attempted": total_q,
             "hints_used": total_hints,
         },

@@ -142,6 +142,45 @@ const QUICK_OPTIONS = [
   { text: "Recommend practice questions", type: "recommend_practice" },
 ];
 
+/* Difficulty float → user-facing label + color */
+function getDifficultyLabel(d: number): { label: string; color: string; bg: string } {
+  if (d <= 0.35) return { label: "Easy", color: "#1bb576", bg: "rgba(27,181,118,.08)" };
+  if (d <= 0.55) return { label: "Medium", color: "#e67e22", bg: "rgba(230,126,34,.08)" };
+  return { label: "Hard", color: "#d63031", bg: "rgba(214,48,49,.08)" };
+}
+
+/* Question type display */
+function getQuestionTypeLabel(qt?: string): { label: string; icon: string } {
+  switch (qt) {
+    case "mcq": return { label: "MCQ", icon: "☑️" };
+    case "numeric": return { label: "Numeric", icon: "🔢" };
+    case "multiple_correct": return { label: "Multi-Select", icon: "☑️" };
+    case "short_answer": return { label: "Short Answer", icon: "✏️" };
+    default: return { label: "MCQ", icon: "☑️" };
+  }
+}
+
+/* Group questions by chapter (concept_id) */
+function groupByChapter(questions: QuestionSummary[]): { chapter: string; chapterName: string; questions: QuestionSummary[] }[] {
+  const map = new Map<string, QuestionSummary[]>();
+  for (const q of questions) {
+    const key = q.concept_id;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(q);
+  }
+  const groups: { chapter: string; chapterName: string; questions: QuestionSummary[] }[] = [];
+  for (const [chapter, qs] of map) {
+    // Sort questions by difficulty ascending within each chapter
+    qs.sort((a, b) => a.difficulty - b.difficulty);
+    groups.push({
+      chapter,
+      chapterName: qs[0]?.chapter_name || CONCEPT_NAMES[chapter] || chapter,
+      questions: qs,
+    });
+  }
+  return groups;
+}
+
 interface ChatMessage {
   role: "tutor" | "learner";
   content: string;
@@ -185,6 +224,7 @@ export function TutorPage() {
   const [loading, setLoading] = useState(false);
   const [questionsLoading, setQuestionsLoading] = useState(true);
   const [solved, setSolved] = useState(false);
+  const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   /* Load questions */
@@ -342,30 +382,32 @@ export function TutorPage() {
         )}
       </div>
 
-      {/* Subject filter pills */}
-      <div style={{ display: "flex", gap: ".4rem", marginBottom: "1.2rem", flexWrap: "wrap" }}>
-        {SUBJECT_FILTERS.map((sf) => (
-          <button
-            key={sf.key}
-            onClick={() => setSubjectFilter(sf.key)}
-            className="mg-pill"
-            style={{
-              cursor: "pointer",
-              background: subjectFilter === sf.key ? "#553285" : "#fff",
-              color: subjectFilter === sf.key ? "#fff" : "#553285",
-              border: `1px solid ${subjectFilter === sf.key ? "#553285" : "#dfe6e9"}`,
-              padding: ".3rem .7rem",
-              fontSize: ".78rem",
-              fontWeight: 600,
-              fontFamily: '"Inter", sans-serif',
-              borderRadius: "1rem",
-              transition: "all .15s ease",
-            }}
-          >
-            {sf.label}
-          </button>
-        ))}
-      </div>
+      {/* Subject filter pills — only when viewing question list */}
+      {!selectedQ && (
+        <div style={{ display: "flex", gap: ".4rem", marginBottom: "1.2rem", flexWrap: "wrap" }}>
+          {SUBJECT_FILTERS.map((sf) => (
+            <button
+              key={sf.key}
+              onClick={() => setSubjectFilter(sf.key)}
+              className="mg-pill"
+              style={{
+                cursor: "pointer",
+                background: subjectFilter === sf.key ? "#553285" : "#fff",
+                color: subjectFilter === sf.key ? "#fff" : "#553285",
+                border: `1px solid ${subjectFilter === sf.key ? "#553285" : "#dfe6e9"}`,
+                padding: ".3rem .7rem",
+                fontSize: ".78rem",
+                fontWeight: 600,
+                fontFamily: '"Inter", sans-serif',
+                borderRadius: "1rem",
+                transition: "all .15s ease",
+              }}
+            >
+              {sf.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* AI Tutor featured card */}
       {!selectedQ && (
@@ -438,31 +480,109 @@ export function TutorPage() {
             <p style={{ color: "#636e72" }}>No questions available for this subject yet.</p>
           ) : (
             <div className="mg-lesson-list">
-              {filteredQuestions.map((q, idx) => (
-                <div
-                  key={q.id}
-                  className="mg-lesson-item"
-                  onClick={() => handleSelectQuestion(q)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleSelectQuestion(q);
-                    }
-                  }}
-                >
-                  <div className="mg-lesson-check">✓</div>
-                  <div>
-                    <div className="mg-lesson-badge">
-                      {CONCEPT_NAMES[q.concept_id] || q.concept_id} · difficulty{" "}
-                      {(q.difficulty * 100).toFixed(0)}%
-                    </div>
-                    <div className="mg-lesson-title">{q.prompt}</div>
+              {groupByChapter(filteredQuestions).map((group) => {
+                const isCollapsed = collapsedChapters.has(group.chapter);
+                return (
+                  <div key={group.chapter} style={{ marginBottom: "1rem" }}>
+                    {/* Chapter header — collapsible */}
+                    <button
+                      onClick={() => {
+                        setCollapsedChapters((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(group.chapter)) next.delete(group.chapter);
+                          else next.add(group.chapter);
+                          return next;
+                        });
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: ".5rem",
+                        width: "100%",
+                        padding: ".6rem .8rem",
+                        background: "rgba(85, 50, 133, 0.05)",
+                        border: "1px solid rgba(85, 50, 133, 0.12)",
+                        borderRadius: ".6rem",
+                        cursor: "pointer",
+                        fontFamily: '"Inter", sans-serif',
+                        fontSize: ".85rem",
+                        fontWeight: 700,
+                        color: "#553285",
+                        textAlign: "left",
+                        transition: "background .15s ease",
+                      }}
+                    >
+                      <span style={{ fontSize: ".7rem", transition: "transform .2s ease", transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▼</span>
+                      <span>{group.chapterName}</span>
+                      <span style={{
+                        marginLeft: "auto",
+                        fontSize: ".7rem",
+                        fontWeight: 500,
+                        color: "#636e72",
+                        background: "rgba(0,0,0,.04)",
+                        padding: ".15rem .5rem",
+                        borderRadius: ".8rem",
+                      }}>
+                        {group.questions.length} question{group.questions.length !== 1 ? "s" : ""}
+                      </span>
+                    </button>
+
+                    {/* Questions within chapter */}
+                    {!isCollapsed && group.questions.map((q, idx) => {
+                      const diff = getDifficultyLabel(q.difficulty);
+                      const qType = getQuestionTypeLabel(q.question_type || q.answer_type);
+                      return (
+                        <div
+                          key={q.id}
+                          className="mg-lesson-item"
+                          onClick={() => handleSelectQuestion(q)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectQuestion(q);
+                            }
+                          }}
+                        >
+                          <div className="mg-lesson-check">✓</div>
+                          <div style={{ flex: 1 }}>
+                            <div className="mg-lesson-badge" style={{ display: "flex", alignItems: "center", gap: ".4rem", flexWrap: "wrap" }}>
+                              {/* Difficulty pill */}
+                              <span style={{
+                                display: "inline-block",
+                                padding: ".12rem .45rem",
+                                borderRadius: ".8rem",
+                                fontSize: ".65rem",
+                                fontWeight: 700,
+                                color: diff.color,
+                                background: diff.bg,
+                                border: `1px solid ${diff.color}20`,
+                              }}>
+                                {diff.label}
+                              </span>
+                              {/* Question type pill */}
+                              <span style={{
+                                display: "inline-block",
+                                padding: ".12rem .45rem",
+                                borderRadius: ".8rem",
+                                fontSize: ".65rem",
+                                fontWeight: 600,
+                                color: "#636e72",
+                                background: "rgba(0,0,0,.04)",
+                              }}>
+                                {qType.icon} {qType.label}
+                              </span>
+                            </div>
+                            <div className="mg-lesson-title">{q.prompt}</div>
+                          </div>
+                          <span className="mg-lesson-meta">Q{idx + 1}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="mg-lesson-meta">Q{idx + 1}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

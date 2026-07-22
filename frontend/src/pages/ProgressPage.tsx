@@ -123,11 +123,17 @@ export function ProgressPage() {
       ? allSubjects
       : allSubjects.filter((s) => s.subject === filter);
 
-  const totalEvidence = concepts.reduce((s, c) => s + c.evidence_count, 0);
-  const totalCorrect = concepts.reduce((s, c) => s + c.independent_correct_count, 0);
+  /* Filter concepts by selected subject for stat cards */
+  const filteredConcepts =
+    filter === "All"
+      ? concepts
+      : concepts.filter((c) => getSubject(c.concept_id) === filter);
+
+  const totalEvidence = filteredConcepts.reduce((s, c) => s + c.evidence_count, 0);
+  const totalCorrect = filteredConcepts.reduce((s, c) => s + c.independent_correct_count, 0);
   const overallMastery =
-    concepts.length > 0
-      ? Math.round((concepts.reduce((s, c) => s + c.p_know, 0) / concepts.length) * 100)
+    filteredConcepts.length > 0
+      ? Math.round((filteredConcepts.reduce((s, c) => s + c.p_know, 0) / filteredConcepts.length) * 100)
       : 0;
 
   return (
@@ -215,7 +221,7 @@ export function ProgressPage() {
             </div>
             <div className="mg-stat-card">
               <div className="mg-stat-card__title">Concepts</div>
-              <div className="mg-stat-card__value">{concepts.length}</div>
+              <div className="mg-stat-card__value">{filteredConcepts.length}</div>
               <div className="mg-stat-card__sub">Tracked</div>
             </div>
           </div>

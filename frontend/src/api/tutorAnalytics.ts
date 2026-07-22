@@ -59,7 +59,10 @@ export interface QuestionSummary {
   prompt: string;
   difficulty: number;
   answer_type?: string;
+  question_type?: string;
   options?: string[];
+  chapter_name?: string;
+  subject?: string;
 }
 
 export interface CohortResponse {
