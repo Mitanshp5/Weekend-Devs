@@ -790,14 +790,14 @@ export function DiagnosticPage() {
             </h1>
           </div>
 
-          {/* Question card */}
+          {/* Question card (includes feedback and action bar) */}
           <div
             style={{
               background: "#fff",
-              borderRadius: "1rem",
-              padding: "1.6rem",
-              boxShadow: "0 4px 24px rgba(16,40,30,.18)",
-              marginBottom: "1rem",
+              borderRadius: "1.25rem",
+              padding: "1.6rem 1.8rem",
+              boxShadow: "0 8px 32px rgba(16,40,30,.22)",
+              marginBottom: "1.5rem",
             }}
           >
             {phase === "loading" ? (
@@ -887,151 +887,153 @@ export function DiagnosticPage() {
                 )}
               </>
             )}
-          </div>
 
-          {/* Feedback card */}
-          {(phase === "feedback" || phase === "submitting") && lastResponse && (
-            <div
-              ref={feedbackRef}
-              style={{
-                background: lastResponse.is_correct
-                  ? "rgba(27,181,118,.09)"
-                  : "rgba(214,48,49,.07)",
-                border: `1.5px solid ${lastResponse.is_correct ? "rgba(27,181,118,.25)" : "rgba(214,48,49,.2)"}`,
-                borderRadius: "1rem",
-                padding: "1.2rem 1.4rem",
-                marginBottom: "1rem",
-              }}
-            >
+            {/* Feedback box */}
+            {(phase === "feedback" || phase === "submitting") && lastResponse && (
               <div
+                ref={feedbackRef}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: ".6rem",
-                  marginBottom: ".6rem",
+                  marginTop: "1.4rem",
+                  background: lastResponse.is_correct
+                    ? "rgba(27,181,118,.1)"
+                    : "rgba(214,48,49,.08)",
+                  border: `1.5px solid ${lastResponse.is_correct ? "rgba(27,181,118,.3)" : "rgba(214,48,49,.25)"}`,
+                  borderRadius: ".85rem",
+                  padding: "1.1rem 1.3rem",
                 }}
               >
-                <span style={{ fontSize: "1.1rem" }}>
-                  {lastResponse.is_correct ? "✅" : "💡"}
-                </span>
-                <strong
+                <div
                   style={{
-                    fontFamily: '"Inter", "Segoe UI", sans-serif',
-                    fontSize: ".9rem",
-                    color: lastResponse.is_correct ? "#1a5c3f" : "#c0392b",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: ".6rem",
+                    marginBottom: ".5rem",
                   }}
                 >
-                  {lastResponse.is_correct ? "Correct" : "Not quite"}
-                </strong>
-                {results[results.length - 1] && (
-                  <span
+                  <span style={{ fontSize: "1.1rem" }}>
+                    {lastResponse.is_correct ? "✅" : "💡"}
+                  </span>
+                  <strong
                     style={{
-                      marginLeft: "auto",
                       fontFamily: '"Inter", "Segoe UI", sans-serif',
-                      fontSize: ".72rem",
-                      color: results[results.length - 1].pKnow >= 0.70
-                        ? "#1bb576"
-                        : results[results.length - 1].pKnow >= 0.40
-                          ? "#e67e22"
-                          : "#d63031",
-                      fontWeight: 600,
+                      fontSize: ".92rem",
+                      color: lastResponse.is_correct ? "#155d3b" : "#c0392b",
+                      fontWeight: 700,
                     }}
                   >
-                    {results[results.length - 1].pKnow >= 0.70
-                      ? "Ready for next challenge"
-                      : results[results.length - 1].pKnow >= 0.40
-                        ? "Getting there — one more check"
-                        : "Let's rebuild this idea"}
-                  </span>
-                )}
+                    {lastResponse.is_correct ? "Correct!" : "Not quite"}
+                  </strong>
+                  {results[results.length - 1] && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontFamily: '"Inter", "Segoe UI", sans-serif',
+                        fontSize: ".75rem",
+                        color: results[results.length - 1].pKnow >= 0.70
+                          ? "#1bb576"
+                          : results[results.length - 1].pKnow >= 0.40
+                            ? "#e67e22"
+                            : "#d63031",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {results[results.length - 1].pKnow >= 0.70
+                        ? "Ready for next challenge"
+                        : results[results.length - 1].pKnow >= 0.40
+                          ? "Getting there — one more check"
+                          : "Let's rebuild this idea"}
+                    </span>
+                  )}
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontFamily: '"Inter", "Segoe UI", sans-serif',
+                    fontSize: ".9rem",
+                    color: "#2d3436",
+                    lineHeight: 1.6,
+                    fontWeight: 400,
+                  }}
+                >
+                  {lastResponse.message}
+                </p>
               </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: '"Inter", "Segoe UI", sans-serif',
-                  fontSize: ".88rem",
-                  color: "#2d3436",
-                  lineHeight: 1.6,
-                }}
-              >
-                {lastResponse.message}
-              </p>
-            </div>
-          )}
+            )}
 
-          {/* Action bar */}
-          <div
-            style={{
-              display: "flex",
-              gap: ".75rem",
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
-              position: "sticky",
-              bottom: 0,
-              background: "linear-gradient(transparent, rgba(255,255,255,.95) 20%)",
-              paddingTop: "1rem",
-              paddingBottom: ".5rem",
-              zIndex: 10,
-            }}
-          >
-            {phase === "answering" && (
-              <button
-                id="diagnostic-submit"
-                onClick={() => void handleSubmit()}
-                disabled={!canSubmit}
-                style={{
-                  padding: ".8rem 1.6rem",
-                  background: canSubmit ? "#553285" : "#dfe6e9",
-                  color: canSubmit ? "#fff" : "#b2bec3",
-                  border: "none",
-                  borderRadius: ".75rem",
-                  fontFamily: '"Inter", "Segoe UI", sans-serif',
-                  fontSize: ".92rem",
-                  fontWeight: 700,
-                  cursor: canSubmit ? "pointer" : "default",
-                  transition: "all .15s ease",
-                }}
-              >
-                Submit answer
-              </button>
-            )}
-            {phase === "feedback" && (
-              <button
-                id="diagnostic-next"
-                onClick={handleNext}
-                style={{
-                  padding: ".8rem 1.6rem",
-                  background: "#553285",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: ".75rem",
-                  fontFamily: '"Inter", "Segoe UI", sans-serif',
-                  fontSize: ".92rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  transition: "opacity .15s",
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.opacity = ".85")}
-                onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
-              >
-                {stepIndex + 1 >= DIAGNOSTIC_CONCEPTS.length
-                  ? "See my results →"
-                  : "Next question →"}
-              </button>
-            )}
-            {phase === "submitting" && (
-              <span
-                style={{
-                  padding: ".8rem 1.4rem",
-                  fontFamily: '"Inter", "Segoe UI", sans-serif',
-                  fontSize: ".9rem",
-                  color: "#636e72",
-                }}
-              >
-                Scoring…
-              </span>
-            )}
-            {!currentQ && phase === "answering" && (
+            {/* Action bar */}
+            <div
+              style={{
+                display: "flex",
+                gap: ".75rem",
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+                marginTop: "1.5rem",
+                paddingTop: "1rem",
+                borderTop: "1px solid #f0f3f1",
+              }}
+            >
+              {phase === "answering" && (
+                <button
+                  id="diagnostic-submit"
+                  onClick={() => void handleSubmit()}
+                  disabled={!canSubmit}
+                  style={{
+                    padding: ".8rem 1.6rem",
+                    background: canSubmit ? "#553285" : "#dfe6e9",
+                    color: canSubmit ? "#fff" : "#b2bec3",
+                    border: "none",
+                    borderRadius: ".75rem",
+                    fontFamily: '"Inter", "Segoe UI", sans-serif',
+                    fontSize: ".92rem",
+                    fontWeight: 700,
+                    cursor: canSubmit ? "pointer" : "default",
+                    transition: "all .15s ease",
+                  }}
+                >
+                  Submit answer
+                </button>
+              )}
+              {phase === "feedback" && (
+                <button
+                  id="diagnostic-next"
+                  onClick={handleNext}
+                  style={{
+                    padding: ".8rem 1.6rem",
+                    background: "#553285",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: ".75rem",
+                    fontFamily: '"Inter", "Segoe UI", sans-serif',
+                    fontSize: ".92rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "opacity .15s",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.opacity = ".85")}
+                  onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
+                >
+                  {stepIndex + 1 >= DIAGNOSTIC_CONCEPTS.length
+                    ? "See my results →"
+                    : "Next question →"}
+                </button>
+              )}
+              {phase === "submitting" && (
+                <span
+                  style={{
+                    padding: ".8rem 1.4rem",
+                    fontFamily: '"Inter", "Segoe UI", sans-serif',
+                    fontSize: ".9rem",
+                    color: "#636e72",
+                  }}
+                >
+                  Evaluating answer…
+                </span>
+              )}
+            </div>
+          </div>
+
+          {!currentQ && phase === "answering" && (
+            <div style={{ textAlign: "center" }}>
               <button
                 id="diagnostic-skip"
                 onClick={handleNext}
@@ -1049,8 +1051,8 @@ export function DiagnosticPage() {
               >
                 Continue →
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </PageTransition>

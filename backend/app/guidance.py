@@ -44,14 +44,27 @@ def _load_concept_cache() -> dict[str, dict]:
     return _concept_cache
 
 
+from app.tutor import CONCEPT_FRIENDLY_NAMES
+
 def _concept_friendly(concept_id: str) -> str:
+    if concept_id in CONCEPT_FRIENDLY_NAMES:
+        return CONCEPT_FRIENDLY_NAMES[concept_id]
     cache = _load_concept_cache()
-    return cache.get(concept_id, {}).get("name", concept_id)
+    return cache.get(concept_id, {}).get("name", concept_id.replace("_", " ").replace(".", " ").title())
 
 
 def _concept_unit(concept_id: str) -> str:
     cache = _load_concept_cache()
-    return cache.get(concept_id, {}).get("unit", "the next unit")
+    unit = cache.get(concept_id, {}).get("unit")
+    if unit:
+        return unit
+    if concept_id.startswith(("math.", "num.", "eq.")):
+        return "Linear Equations & Algebra"
+    if concept_id.startswith("sci."):
+        return "Science & Environment"
+    if concept_id.startswith("eng."):
+        return "English Literature"
+    return "the next unit"
 
 
 def _concept_subject(concept_id: str) -> str:
