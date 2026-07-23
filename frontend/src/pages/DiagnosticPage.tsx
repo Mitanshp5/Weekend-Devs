@@ -84,9 +84,12 @@ interface BandPlacement {
 function readLearnerId(): string {
   try {
     const stored = localStorage.getItem("prism_user");
-    if (stored) return (JSON.parse(stored) as { email: string }).email ?? "";
+    if (stored) {
+      const u = JSON.parse(stored) as { email?: string };
+      return u.email || "aanya@prism.demo";
+    }
   } catch { /* ignore */ }
-  return "";
+  return "aanya@prism.demo";
 }
 
 function readLearnerName(): string {

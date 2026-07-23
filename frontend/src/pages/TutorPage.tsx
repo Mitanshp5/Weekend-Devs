@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PageTransition } from "../components/PageTransition";
 import {
   fetchQuestions,
+  fetchProgress,
   postGuidance,
   postTutorRespond,
   type QuestionSummary,
@@ -47,8 +48,10 @@ export const CONCEPT_NAMES: Record<string, string> = {
   "eng.summit_within": "The Summit Within",
 };
 
-/* Map concept_id prefix → subject for filtering */
-function getSubjectForConcept(conceptId: string): string {
+/* Map question / concept_id → subject for filtering */
+function getSubjectForConcept(q: QuestionSummary): string {
+  if (q.subject) return q.subject;
+  const conceptId = q.concept_id || "";
   if (conceptId.startsWith("math.") || conceptId.startsWith("num.") || conceptId.startsWith("eq.")) return "mathematics";
   if (conceptId.startsWith("sci.")) return "science";
   if (conceptId.startsWith("eng.")) return "english";
@@ -169,11 +172,18 @@ const CHAPTER_GROUPS: { key: string; chapter: string; concepts: string[]; subjec
 ];
 
 /* Group questions by parent chapter, with topic labels per concept */
-function groupByChapter(questions: QuestionSummary[]): { chapter: string; chapterName: string; questions: (QuestionSummary & { topicName?: string })[] }[] {
+function groupByChapter(
+  questions: QuestionSummary[],
+  activeSubjectFilter: string
+): { chapter: string; chapterName: string; questions: (QuestionSummary & { topicName?: string })[] }[] {
   const groups: { chapter: string; chapterName: string; questions: (QuestionSummary & { topicName?: string })[] }[] = [];
   const assigned = new Set<string>();
 
-  for (const cg of CHAPTER_GROUPS) {
+  const relevantChapterGroups = activeSubjectFilter === "all"
+    ? CHAPTER_GROUPS
+    : CHAPTER_GROUPS.filter((cg) => cg.subject === activeSubjectFilter);
+
+  for (const cg of relevantChapterGroups) {
     const qs = questions
       .filter((q) => cg.concepts.includes(q.concept_id))
       .map((q) => ({ ...q, topicName: CONCEPT_NAMES[q.concept_id] || q.concept_id }))
@@ -217,10 +227,10 @@ export function TutorPage() {
       const stored = localStorage.getItem("prism_user");
       if (stored) {
         const user = JSON.parse(stored);
-        return user.email as string;
+        return (user.email as string) || "aanya@prism.demo";
       }
     } catch { /* ignore */ }
-    return "";
+    return "aanya@prism.demo";
   })();
   const learnerName = (() => {
     try {
@@ -248,7 +258,9 @@ export function TutorPage() {
   const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  /* Load questions */
+  const [userConceptsMap, setUserConceptsMap] = useState<Record<string, { evidenceCount: number; indepCount: number; pKnow: number }>>({});
+
+  /* Load questions and user concept progress */
   useEffect(() => {
     fetchQuestions()
       .then((data) => {
@@ -259,13 +271,30 @@ export function TutorPage() {
   }, []);
 
   useEffect(() => {
+    if (!learnerId) return;
+    fetchProgress(learnerId)
+      .then((data) => {
+        const map: Record<string, { evidenceCount: number; indepCount: number; pKnow: number }> = {};
+        data.concepts.forEach((c) => {
+          map[c.concept_id] = {
+            evidenceCount: c.evidence_count,
+            indepCount: c.independent_correct_count,
+            pKnow: c.p_know,
+          };
+        });
+        setUserConceptsMap(map);
+      })
+      .catch(() => {});
+  }, [learnerId]);
+
+  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
   /* Filter questions by subject */
   const filteredQuestions = subjectFilter === "all"
     ? questions
-    : questions.filter((q) => getSubjectForConcept(q.concept_id) === subjectFilter);
+    : questions.filter((q) => getSubjectForConcept(q) === subjectFilter);
 
   const handleSelectQuestion = useCallback(
     (q: QuestionSummary) => {
@@ -370,6 +399,19 @@ export function TutorPage() {
             setAttempt(Math.min(hintAttempt! + 1, 3));
           }
         }
+
+        // Update local concept progress map so attempted/solved badge updates instantly
+        setUserConceptsMap((prev) => {
+          const current = prev[selectedQ.concept_id] || { evidenceCount: 0, indepCount: 0, pKnow: 0.15 };
+          return {
+            ...prev,
+            [selectedQ.concept_id]: {
+              evidenceCount: current.evidenceCount + 1,
+              indepCount: resp.is_correct ? current.indepCount + 1 : current.indepCount,
+              pKnow: resp.p_know ?? current.pKnow,
+            },
+          };
+        });
         setAnswer("");
       } catch {
         setChatHistory((prev) => [
@@ -501,7 +543,7 @@ export function TutorPage() {
             <p style={{ color: "#636e72" }}>No questions available for this subject yet.</p>
           ) : (
             <div className="mg-lesson-list">
-              {groupByChapter(filteredQuestions).map((group) => {
+              {groupByChapter(filteredQuestions, subjectFilter).map((group) => {
                 const isCollapsed = collapsedChapters.has(group.chapter);
                 return (
                   <div key={group.chapter} style={{ marginBottom: "1rem" }}>
@@ -628,7 +670,26 @@ export function TutorPage() {
                               </span>
                             )}
                           </div>
-                          <span className="mg-lesson-meta">Q{idx + 1}</span>
+                          {(() => {
+                            const prog = userConceptsMap[q.concept_id];
+                            const isSolved = prog && (prog.indepCount > 0 || prog.pKnow >= 0.70);
+                            const isAttempted = prog && prog.evidenceCount > 0;
+                            if (isSolved) {
+                              return (
+                                <span className="mg-pill mg-pill--green" style={{ fontSize: ".72rem", padding: ".2rem .55rem" }}>
+                                  ✓ Solved
+                                </span>
+                              );
+                            }
+                            if (isAttempted) {
+                              return (
+                                <span className="mg-pill mg-pill--orange" style={{ fontSize: ".72rem", padding: ".2rem .55rem" }}>
+                                  📝 Attempted
+                                </span>
+                              );
+                            }
+                            return <span className="mg-lesson-meta">Q{idx + 1}</span>;
+                          })()}
                         </div>
                       );
                     })}

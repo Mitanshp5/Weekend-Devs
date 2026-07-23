@@ -299,6 +299,7 @@ def tutor_respond(req: TutorRequest) -> dict:
         raise HTTPException(status_code=404, detail="Question not found")
 
     initialize_tutor_analytics_tables()
+    learner_id = req.learner_id.strip() if (req.learner_id and req.learner_id.strip()) else "aanya@prism.demo"
     concept_id = question["concept_id"]
 
     # 1. Retrieve current mastery/p_know
@@ -348,7 +349,7 @@ def tutor_respond(req: TutorRequest) -> dict:
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
-                        req.learner_id,
+                        learner_id,
                         req.question_id,
                         req.attempt_number,
                         response["response_mode"],
@@ -368,7 +369,7 @@ def tutor_respond(req: TutorRequest) -> dict:
                     VALUES (%s, %s, %s, %s, %s, %s, %s, true)
                     """,
                     (
-                        req.learner_id,
+                        learner_id,
                         concept_id,
                         prior_p_know,
                         prior_evidence,
@@ -431,7 +432,7 @@ def tutor_respond(req: TutorRequest) -> dict:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    req.learner_id,
+                    learner_id,
                     concept_id,
                     new_p_know,
                     new_evidence,
@@ -502,7 +503,7 @@ def tutor_respond(req: TutorRequest) -> dict:
                     VALUES (%s, 8, %s, 'Grade-Level', %s, %s, %s, %s, %s, 0)
                     """,
                     (
-                        req.learner_id,
+                        learner_id,
                         band,
                         concept_id,
                         likely_blocker,
@@ -545,7 +546,7 @@ def tutor_respond(req: TutorRequest) -> dict:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    req.learner_id,
+                    learner_id,
                     req.question_id,
                     req.attempt_number,
                     response["response_mode"],

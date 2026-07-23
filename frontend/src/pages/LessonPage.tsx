@@ -60,9 +60,12 @@ interface AttemptRecord {
 function readLearnerId(): string {
   try {
     const s = localStorage.getItem("prism_user");
-    if (s) return (JSON.parse(s) as { email: string }).email ?? "";
+    if (s) {
+      const u = JSON.parse(s) as { email?: string };
+      return u.email || "aanya@prism.demo";
+    }
   } catch { /* ignore */ }
-  return "";
+  return "aanya@prism.demo";
 }
 
 function readLearnerName(): string {
@@ -451,6 +454,7 @@ export function LessonPage() {
                 fontWeight: 700,
                 color: "#142b21",
                 letterSpacing: "-.03em",
+                textAlign: "center",
               }}
             >
               {mastered
@@ -464,6 +468,7 @@ export function LessonPage() {
                 fontSize: ".92rem",
                 color: "#636e72",
                 lineHeight: 1.6,
+                textAlign: "center",
               }}
             >
               {conceptName} · {correctCount} of {attempts.length} correct
@@ -485,14 +490,15 @@ export function LessonPage() {
             <p
               style={{
                 margin: "0 0 1.8rem",
-                fontFamily: '"SFMono-Regular", Consolas, monospace',
-                fontSize: ".72rem",
+                fontFamily: '"Inter", "Segoe UI", sans-serif',
+                fontSize: ".82rem",
                 color: "#636e72",
-                fontFeatureSettings: '"tnum"',
+                textAlign: "center",
               }}
             >
-              P(know) = {currentPKnow.toFixed(3)} ·{" "}
-              {mastered ? "mastery threshold reached" : "continue practising"}
+              {mastered
+                ? "Mastery threshold reached — ready for extension"
+                : "Keep practising to build complete mastery"}
             </p>
 
             <div style={{ display: "flex", gap: ".7rem", justifyContent: "center", flexWrap: "wrap" }}>

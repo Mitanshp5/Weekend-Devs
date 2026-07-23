@@ -74,6 +74,7 @@ class GuidanceRequest(BaseModel):
 def tutor_guidance(req: GuidanceRequest) -> dict:
     """Return deterministic guidance based on learner's mastery_history data."""
     initialize_tutor_analytics_tables()
+    learner_id = req.learner_id.strip() if (req.learner_id and req.learner_id.strip()) else "aanya@prism.demo"
 
     with connect() as conn:
         with conn.cursor() as cur:
@@ -86,14 +87,14 @@ def tutor_guidance(req: GuidanceRequest) -> dict:
                 WHERE learner_id = %s
                 ORDER BY concept_id, created_at DESC, id DESC
                 """,
-                (req.learner_id,),
+                (learner_id,),
             )
             concept_rows = cur.fetchall()
 
             # Get total questions attempted
             cur.execute(
                 "SELECT COUNT(DISTINCT question_id) AS total FROM tutor_sessions WHERE learner_id = %s",
-                (req.learner_id,),
+                (learner_id,),
             )
             row = cur.fetchone()
             total_q = row["total"] if row else 0
@@ -101,7 +102,7 @@ def tutor_guidance(req: GuidanceRequest) -> dict:
             # Get total hints used
             cur.execute(
                 "SELECT COUNT(*) AS total FROM mastery_history WHERE learner_id = %s AND hint_used = true",
-                (req.learner_id,),
+                (learner_id,),
             )
             row = cur.fetchone()
             total_hints = row["total"] if row else 0
