@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 
 import { getSubjectPath, type SubjectPath } from "../api/catalog";
@@ -7,6 +7,7 @@ import { PageTransition } from "../components/PageTransition";
 
 export function SubjectPathPage() {
   const { subjectSlug = "" } = useParams();
+  const navigate = useNavigate();
   const [path, setPath] = useState<SubjectPath | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const reduceMotion = useReducedMotion();
@@ -36,6 +37,8 @@ export function SubjectPathPage() {
             {path.units.map((unit, index) => (
               <motion.li
                 key={unit.slug}
+                onClick={() => navigate(`/lesson/${unit.slug}`)}
+                style={{ cursor: "pointer" }}
                 initial={reduceMotion ? false : { opacity: 0, x: -18 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={reduceMotion ? { duration: 0.01 } : { type: "spring", stiffness: 260, damping: 25, delay: index * 0.045 }}
@@ -45,7 +48,9 @@ export function SubjectPathPage() {
                   <h2>{unit.name}</h2>
                   <p>{unit.concept_count} mapped concepts</p>
                 </div>
-                <Link className="unit-open" to={`/lesson/${unit.slug}`}>Open <span aria-hidden="true">↗</span></Link>
+                <Link className="unit-open" to={`/lesson/${unit.slug}`} onClick={(e) => e.stopPropagation()}>
+                  Open <span aria-hidden="true">↗</span>
+                </Link>
               </motion.li>
             ))}
           </ol>

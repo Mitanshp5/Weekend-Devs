@@ -48,6 +48,7 @@ def _band_for_p_know(p_know: float, independent_correct: int) -> dict:
 def get_learner_progress(learner_id: str) -> dict:
     """Return the latest mastery state per concept for a learner."""
     initialize_tutor_analytics_tables()
+    safe_learner_id = learner_id.strip() if (learner_id and learner_id.strip()) else "aanya@prism.demo"
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -60,24 +61,25 @@ def get_learner_progress(learner_id: str) -> dict:
                 WHERE learner_id = %s
                 ORDER BY concept_id, created_at DESC
                 """,
-                (learner_id,),
+                (safe_learner_id,),
             )
             rows = cur.fetchall()
             if not rows:
-                return {"learner_id": learner_id, "concepts": []}
+                return {"learner_id": safe_learner_id, "concepts": []}
             concepts = []
             for row in rows:
                 band_info = _band_for_p_know(
                     row["p_know"], row["independent_correct_count"]
                 )
                 concepts.append({**row, **band_info})
-            return {"learner_id": learner_id, "concepts": concepts}
+            return {"learner_id": safe_learner_id, "concepts": concepts}
 
 
 @router.get("/{learner_id}/concept/{concept_id}")
 def get_concept_evidence(learner_id: str, concept_id: str) -> dict:
     """Return the full evidence timeline for a learner-concept pair."""
     initialize_tutor_analytics_tables()
+    safe_learner_id = learner_id.strip() if (learner_id and learner_id.strip()) else "aanya@prism.demo"
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -89,7 +91,7 @@ def get_concept_evidence(learner_id: str, concept_id: str) -> dict:
                 WHERE learner_id = %s AND concept_id = %s
                 ORDER BY created_at ASC
                 """,
-                (learner_id, concept_id),
+                (safe_learner_id, concept_id),
             )
             rows = cur.fetchall()
             if not rows:

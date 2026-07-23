@@ -44,14 +44,27 @@ def _load_concept_cache() -> dict[str, dict]:
     return _concept_cache
 
 
+from app.tutor import CONCEPT_FRIENDLY_NAMES
+
 def _concept_friendly(concept_id: str) -> str:
+    if concept_id in CONCEPT_FRIENDLY_NAMES:
+        return CONCEPT_FRIENDLY_NAMES[concept_id]
     cache = _load_concept_cache()
-    return cache.get(concept_id, {}).get("name", concept_id)
+    return cache.get(concept_id, {}).get("name", concept_id.replace("_", " ").replace(".", " ").title())
 
 
 def _concept_unit(concept_id: str) -> str:
     cache = _load_concept_cache()
-    return cache.get(concept_id, {}).get("unit", "the next unit")
+    unit = cache.get(concept_id, {}).get("unit")
+    if unit:
+        return unit
+    if concept_id.startswith(("math.", "num.", "eq.")):
+        return "Linear Equations & Algebra"
+    if concept_id.startswith("sci."):
+        return "Science & Environment"
+    if concept_id.startswith("eng."):
+        return "English Literature"
+    return "the next unit"
 
 
 def _concept_subject(concept_id: str) -> str:
@@ -74,6 +87,7 @@ class GuidanceRequest(BaseModel):
 def tutor_guidance(req: GuidanceRequest) -> dict:
     """Return deterministic guidance based on learner's mastery_history data."""
     initialize_tutor_analytics_tables()
+    learner_id = req.learner_id.strip() if (req.learner_id and req.learner_id.strip()) else "aanya@prism.demo"
 
     with connect() as conn:
         with conn.cursor() as cur:
@@ -86,14 +100,14 @@ def tutor_guidance(req: GuidanceRequest) -> dict:
                 WHERE learner_id = %s
                 ORDER BY concept_id, created_at DESC, id DESC
                 """,
-                (req.learner_id,),
+                (learner_id,),
             )
             concept_rows = cur.fetchall()
 
             # Get total questions attempted
             cur.execute(
                 "SELECT COUNT(DISTINCT question_id) AS total FROM tutor_sessions WHERE learner_id = %s",
-                (req.learner_id,),
+                (learner_id,),
             )
             row = cur.fetchone()
             total_q = row["total"] if row else 0
@@ -101,7 +115,7 @@ def tutor_guidance(req: GuidanceRequest) -> dict:
             # Get total hints used
             cur.execute(
                 "SELECT COUNT(*) AS total FROM mastery_history WHERE learner_id = %s AND hint_used = true",
-                (req.learner_id,),
+                (learner_id,),
             )
             row = cur.fetchone()
             total_hints = row["total"] if row else 0
@@ -140,29 +154,48 @@ def _am_i_on_track(
         }
 
     total = len(concept_rows)
-    mastery_pct = round(len(mastered) / total * 100) if total else 0
-    avg_p = round(sum(r["p_know"] for r in concept_rows) / total, 2)
 
-    strong_names = [_concept_friendly(r["concept_id"]) for r in mastered[:3]]
-    weak_names = [_concept_friendly(r["concept_id"]) for r in weak[:3]]
+    # Calculate average p_know for overall understanding level
+    avg_p = sum(r["p_know"] for r in concept_rows) / total
+
+    # Determine overall understanding level label
+    if avg_p >= 0.70:
+        level_label = "Strong"
+        level_emoji = "🟢"
+        level_desc = "You have a solid grasp of the concepts you've studied."
+    elif avg_p >= 0.40:
+        level_label = "Developing"
+        level_emoji = "🟡"
+        level_desc = "You're building understanding — keep practicing to strengthen your skills."
+    else:
+        level_label = "Needs Practice"
+        level_emoji = "🔴"
+        level_desc = "You're just getting started — more practice will help these concepts click."
 
     parts = []
-    if mastery_pct >= 70:
-        parts.append(f"📈 Great progress! You've mastered {len(mastered)} of {total} concepts ({mastery_pct}%).")
-    elif mastery_pct >= 40:
-        parts.append(f"📊 You're making progress — {len(mastered)} of {total} concepts mastered ({mastery_pct}%). Keep going!")
-    else:
-        parts.append(f"📋 You've covered {total} concepts so far with {mastery_pct}% mastery.")
 
-    parts.append(f"Questions attempted: {total_q} | Hints used: {total_hints}")
+    # Lead with encouragement and understanding level
+    parts.append(f"{level_emoji} Understanding Level: **{level_label}**")
+    parts.append(level_desc)
 
-    if strong_names:
+    # Natural language stats
+    if total_q > 0:
+        parts.append(f"📝 You've attempted {total_q} question{'s' if total_q != 1 else ''} across {total} concept{'s' if total != 1 else ''}, using {total_hints} hint{'s' if total_hints != 1 else ''}.")
+
+    # Strong topics with friendly names
+    if mastered:
+        strong_names = [_concept_friendly(r["concept_id"]) for r in mastered[:3]]
         parts.append(f"💪 Strong topics: {', '.join(strong_names)}")
-    if weak_names:
-        parts.append(f"🔧 Focus areas: {', '.join(weak_names)}")
+
+    # Developing topics with friendly names
     if developing:
-        dev_names = [_concept_friendly(r["concept_id"]) for r in developing[:2]]
-        parts.append(f"🔄 Developing: {', '.join(dev_names)} — a few more correct answers will get you there!")
+        dev_names = [_concept_friendly(r["concept_id"]) for r in developing[:3]]
+        parts.append(f"🔄 Getting there: {', '.join(dev_names)} — a few more correct answers will level these up!")
+
+    # Weak topics with friendly names
+    if weak:
+        weak_names = [_concept_friendly(r["concept_id"]) for r in weak[:3]]
+        parts.append(f"🔧 Focus areas: {', '.join(weak_names)} — try more practice questions on these topics.")
 
     return {
         "question_type": "am_i_on_track",
@@ -172,7 +205,8 @@ def _am_i_on_track(
             "mastered": len(mastered),
             "developing": len(developing),
             "weak": len(weak),
-            "avg_mastery": avg_p,
+            "understanding_level": level_label,
+            "avg_p_know": round(avg_p, 2),
             "questions_attempted": total_q,
             "hints_used": total_hints,
         },

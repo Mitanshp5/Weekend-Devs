@@ -16,13 +16,13 @@ describe("App", () => {
     expect(screen.getByRole("link", { name: "Start diagnostic" })).toBeInTheDocument();
   });
 
-  it("moves to the evidence intake view when the learner starts", async () => {
+  it("moves to the diagnostic workspace when the learner starts", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole("link", { name: "Start diagnostic" }));
 
-    expect(await screen.findByRole("heading", { name: "Start with evidence, not a label." })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Explore curriculum atlas" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Integer Operations (Signed Numbers)" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Diagnostic step 1 of 5" })).toBeInTheDocument();
   });
 });

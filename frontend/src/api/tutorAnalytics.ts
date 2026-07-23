@@ -59,7 +59,20 @@ export interface QuestionSummary {
   prompt: string;
   difficulty: number;
   answer_type?: string;
+  question_type?: string;
   options?: string[];
+  chapter_name?: string;
+  topic_name?: string;
+  subject?: string;
+  hint_ladder?: string[];
+  solution_steps?: string[];
+  expected_answer?: string;
+  ncert_reference?: {
+    book: string;
+    chapter: string;
+    page_range?: string;
+    exercise?: string;
+  };
 }
 
 export interface CohortResponse {
