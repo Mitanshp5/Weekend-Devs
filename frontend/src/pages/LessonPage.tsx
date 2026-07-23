@@ -42,7 +42,7 @@ const PREREQ_CHAIN: Record<string, string[]> = {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type LessonPhase = "loading" | "practising" | "submitting" | "feedback" | "complete";
+type LessonPhase = "loading" | "practising" | "submitting" | "feedback" | "complete" | "review";
 
 interface AttemptRecord {
   questionId: string;
@@ -169,14 +169,14 @@ function HintButtons({
             padding: ".35rem .7rem",
             background:
               h.level < hintLevel
-                ? "rgba(85,50,133,.06)"
-                : "transparent",
-            border: `1.5px solid ${h.level < hintLevel ? "rgba(85,50,133,.15)" : "rgba(85,50,133,.3)"}`,
+                ? "rgba(85,50,133,.12)"
+                : "#fff",
+            border: `1.5px solid ${h.level < hintLevel ? "#553285" : "rgba(85,50,133,.3)"}`,
             borderRadius: ".55rem",
             fontFamily: '"Inter", "Segoe UI", sans-serif',
             fontSize: ".78rem",
-            fontWeight: 600,
-            color: h.level < hintLevel ? "#b2bec3" : "#553285",
+            fontWeight: 700,
+            color: "#553285",
             cursor: disabled || h.level < hintLevel ? "default" : "pointer",
             opacity: disabled ? 0.5 : 1,
             transition: "all .15s ease",
@@ -392,6 +392,208 @@ export function LessonPage() {
   const masteryPct = Math.round(currentPKnow * 100);
 
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Review screen
+  // ---------------------------------------------------------------------------
+  if (phase === "review") {
+    const displayQuestions = lessonQuestions.length > 0
+      ? lessonQuestions
+      : allQuestions.filter((q: QuestionSummary) => q.concept_id === conceptId);
+
+    return (
+      <PageTransition className="app-shell">
+        <div style={{ minHeight: "100dvh", padding: "2rem 1rem", overflowY: "auto" }}>
+          <div style={{ width: "min(94vw, 660px)", margin: "0 auto" }}>
+            <button
+              onClick={() => setPhase("complete")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "rgba(244,247,239,.8)",
+                fontSize: ".88rem",
+                cursor: "pointer",
+                marginBottom: "1.2rem",
+                fontWeight: 600,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: ".4rem",
+              }}
+            >
+              ← Back to Lesson Summary
+            </button>
+            <h1
+              style={{
+                color: "#f4f7ef",
+                fontSize: "clamp(1.3rem, 3.5vw, 1.8rem)",
+                marginBottom: "1.5rem",
+                fontFamily: '"Inter", sans-serif',
+                maxWidth: "none",
+                width: "100%",
+                textAlign: "center",
+                fontWeight: 700,
+              }}
+            >
+              Review Lesson Hints & Explanations
+            </h1>
+
+            {displayQuestions.length === 0 ? (
+              <div style={{ background: "#fff", borderRadius: "1rem", padding: "2rem", textAlign: "center", color: "#636e72" }}>
+                <p>No questions found for this lesson yet.</p>
+                <button
+                  onClick={() => navigate("/tutor")}
+                  style={{
+                    padding: ".7rem 1.4rem", background: "#553285", color: "#fff",
+                    border: "none", borderRadius: ".7rem", fontWeight: 700, cursor: "pointer", marginTop: ".8rem",
+                  }}
+                >
+                  Continue with Tutor →
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "1.2rem" }}>
+                {displayQuestions.map((q: QuestionSummary, idx: number) => {
+                  const attempt = attempts.find((a) => a.questionId === q.id);
+                  return (
+                    <div
+                      key={q.id}
+                      style={{
+                        background: "#fff",
+                        borderRadius: "1.1rem",
+                        padding: "1.5rem",
+                        color: "#2d3436",
+                        boxShadow: "0 6px 28px rgba(0,0,0,.15)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: ".7rem",
+                          borderBottom: "1px solid #f0f3f1",
+                          paddingBottom: ".6rem",
+                        }}
+                      >
+                        <strong style={{ fontSize: ".92rem", color: "#553285" }}>
+                          Question {idx + 1}
+                        </strong>
+                        {attempt ? (
+                          <span
+                            style={{
+                              fontSize: ".78rem",
+                              fontWeight: 700,
+                              color: attempt.isCorrect ? "#1bb576" : "#d63031",
+                              background: attempt.isCorrect ? "rgba(27,181,118,.08)" : "rgba(214,48,49,.08)",
+                              padding: ".2rem .6rem",
+                              borderRadius: ".5rem",
+                            }}
+                          >
+                            {attempt.isCorrect ? "✓ Answered Correctly" : "✗ Needs Review"}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: ".78rem", color: "#74818d" }}>
+                            Lesson Practice Item
+                          </span>
+                        )}
+                      </div>
+
+                      <p style={{ fontWeight: 600, marginBottom: "1rem", fontSize: "1rem", color: "#142b21", lineHeight: 1.5 }}>
+                        {q.prompt}
+                      </p>
+
+                      {/* Options if MCQ */}
+                      {q.options && q.options.length > 0 && (
+                        <div style={{ display: "grid", gap: ".4rem", marginBottom: "1rem" }}>
+                          {q.options.map((opt: string, optIdx: number) => {
+                            const letter = String.fromCharCode(65 + optIdx);
+                            const isExpected = q.expected_answer?.toUpperCase() === letter;
+                            return (
+                              <div
+                                key={letter}
+                                style={{
+                                  padding: ".5rem .8rem",
+                                  borderRadius: ".6rem",
+                                  fontSize: ".85rem",
+                                  background: isExpected ? "rgba(27,181,118,.1)" : "#f8f9fa",
+                                  border: `1.5px solid ${isExpected ? "#1bb576" : "#e9ecef"}`,
+                                  fontWeight: isExpected ? 700 : 400,
+                                  color: isExpected ? "#155d3b" : "#2d3436",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: ".6rem",
+                                }}
+                              >
+                                <span>{letter})</span> {opt} {isExpected && " ✓ (Correct Answer)"}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Hints ladder */}
+                      {q.hint_ladder && q.hint_ladder.length > 0 && (
+                        <div
+                          style={{
+                            background: "rgba(85,50,133,.05)",
+                            border: "1px solid rgba(85,50,133,.14)",
+                            borderRadius: ".75rem",
+                            padding: ".9rem 1.1rem",
+                            marginBottom: ".9rem",
+                          }}
+                        >
+                          <strong style={{ fontSize: ".82rem", color: "#553285", display: "block", marginBottom: ".4rem" }}>
+                            💭 Socratic Guidance & Hints:
+                          </strong>
+                          <ol style={{ margin: 0, paddingLeft: "1.2rem", fontSize: ".86rem", color: "#2d3436", lineHeight: 1.6 }}>
+                            {q.hint_ladder.map((h: string, i: number) => (
+                              <li key={i} style={{ marginBottom: ".3rem" }}>{h}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      {/* Solution steps */}
+                      {q.solution_steps && q.solution_steps.length > 0 && (
+                        <div
+                          style={{
+                            background: "rgba(27,181,118,.06)",
+                            border: "1px solid rgba(27,181,118,.16)",
+                            borderRadius: ".75rem",
+                            padding: ".9rem 1.1rem",
+                            marginBottom: ".9rem",
+                          }}
+                        >
+                          <strong style={{ fontSize: ".82rem", color: "#155d3b", display: "block", marginBottom: ".4rem" }}>
+                            📖 Step-by-Step Worked Solution:
+                          </strong>
+                          <div style={{ fontSize: ".86rem", color: "#2d3436", lineHeight: 1.6 }}>
+                            {q.solution_steps.map((step: string, sIdx: number) => (
+                              <div key={sIdx} style={{ marginBottom: ".3rem" }}>
+                                <strong>Step {sIdx + 1}:</strong> {step}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* NCERT Reference */}
+                      {q.ncert_reference && (
+                        <div style={{ fontSize: ".76rem", color: "#155d3b", fontWeight: 600 }}>
+                          📚 NCERT Source: {q.ncert_reference.book} · {q.ncert_reference.chapter}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Completion screen
   // ---------------------------------------------------------------------------
   if (phase === "complete") {
@@ -435,20 +637,25 @@ export function LessonPage() {
             </div>
             <p
               style={{
-                margin: "0 0 .3rem",
+                margin: "0 auto .4rem",
+                maxWidth: "none",
+                width: "100%",
                 fontFamily: '"SFMono-Regular", Consolas, monospace',
                 fontSize: ".68rem",
                 fontWeight: 700,
                 letterSpacing: ".12em",
                 textTransform: "uppercase",
                 color: "#6c927e",
+                textAlign: "center",
               }}
             >
               PRISM · lesson complete
             </p>
             <h1
               style={{
-                margin: "0 0 .5rem",
+                margin: "0 auto .6rem",
+                maxWidth: "none",
+                width: "100%",
                 fontFamily: '"Inter", "Segoe UI", sans-serif',
                 fontSize: "clamp(1.4rem, 4vw, 2rem)",
                 fontWeight: 700,
@@ -463,7 +670,9 @@ export function LessonPage() {
             </h1>
             <p
               style={{
-                margin: "0 0 1.8rem",
+                margin: "0 auto 1.8rem",
+                maxWidth: "none",
+                width: "100%",
                 fontFamily: '"Inter", "Segoe UI", sans-serif',
                 fontSize: ".92rem",
                 color: "#636e72",
@@ -521,6 +730,23 @@ export function LessonPage() {
                 onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
               >
                 Continue with Tutor →
+              </button>
+              <button
+                id="lesson-complete-review"
+                onClick={() => setPhase("review")}
+                style={{
+                  padding: ".8rem 1.2rem",
+                  background: "rgba(85,50,133,.08)",
+                  color: "#553285",
+                  border: "2px solid rgba(85,50,133,.2)",
+                  borderRadius: ".75rem",
+                  fontFamily: '"Inter", "Segoe UI", sans-serif',
+                  fontSize: ".9rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Review Hints & Explanations 📖
               </button>
               <button
                 id="lesson-complete-progress"

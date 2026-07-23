@@ -64,6 +64,9 @@ export interface QuestionSummary {
   chapter_name?: string;
   topic_name?: string;
   subject?: string;
+  hint_ladder?: string[];
+  solution_steps?: string[];
+  expected_answer?: string;
   ncert_reference?: {
     book: string;
     chapter: string;

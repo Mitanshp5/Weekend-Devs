@@ -464,25 +464,31 @@ export function DiagnosticPage() {
             {/* Header */}
             <p
               style={{
-                margin: "0 0 .4rem",
+                margin: "0 auto .4rem",
+                maxWidth: "none",
+                width: "100%",
                 fontFamily: '"SFMono-Regular", Consolas, monospace',
                 fontSize: ".68rem",
                 fontWeight: 700,
                 letterSpacing: ".12em",
                 textTransform: "uppercase",
                 color: "#6c927e",
+                textAlign: "center",
               }}
             >
               PRISM · diagnostic complete
             </p>
             <h1
               style={{
-                margin: "0 0 1.6rem",
+                margin: "0 auto 1.6rem",
+                maxWidth: "none",
+                width: "100%",
                 fontFamily: '"Inter", "Segoe UI", sans-serif',
                 fontSize: "clamp(1.5rem, 4vw, 2.2rem)",
                 fontWeight: 700,
                 color: "#142b21",
                 letterSpacing: "-.03em",
+                textAlign: "center",
               }}
             >
               Evidence collected.

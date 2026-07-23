@@ -255,8 +255,24 @@ export function TutorPage() {
   const [loading, setLoading] = useState(false);
   const [questionsLoading, setQuestionsLoading] = useState(true);
   const [solved, setSolved] = useState(false);
+  const [activeGuidanceOption, setActiveGuidanceOption] = useState<string | null>(null);
   const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  /* Per-question Attempted and Solved tracking */
+  const [attemptedQIds, setAttemptedQIds] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem("prism_attempted_qids");
+      return s ? new Set(JSON.parse(s)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const [solvedQIds, setSolvedQIds] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem("prism_solved_qids");
+      return s ? new Set(JSON.parse(s)) : new Set();
+    } catch { return new Set(); }
+  });
 
   const [userConceptsMap, setUserConceptsMap] = useState<Record<string, { evidenceCount: number; indepCount: number; pKnow: number }>>({});
 
@@ -288,8 +304,10 @@ export function TutorPage() {
   }, [learnerId]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+    if (selectedQ) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatHistory, selectedQ]);
 
   /* Filter questions by subject */
   const filteredQuestions = subjectFilter === "all"
@@ -400,18 +418,23 @@ export function TutorPage() {
           }
         }
 
-        // Update local concept progress map so attempted/solved badge updates instantly
-        setUserConceptsMap((prev) => {
-          const current = prev[selectedQ.concept_id] || { evidenceCount: 0, indepCount: 0, pKnow: 0.15 };
-          return {
-            ...prev,
-            [selectedQ.concept_id]: {
-              evidenceCount: current.evidenceCount + 1,
-              indepCount: resp.is_correct ? current.indepCount + 1 : current.indepCount,
-              pKnow: resp.p_know ?? current.pKnow,
-            },
-          };
-        });
+        // Update per-question Attempted / Solved tracking
+        if (selectedQ) {
+          setAttemptedQIds((prev) => {
+            const next = new Set(prev);
+            next.add(selectedQ.id);
+            try { localStorage.setItem("prism_attempted_qids", JSON.stringify(Array.from(next))); } catch {}
+            return next;
+          });
+          if (resp.is_correct) {
+            setSolvedQIds((prev) => {
+              const next = new Set(prev);
+              next.add(selectedQ.id);
+              try { localStorage.setItem("prism_solved_qids", JSON.stringify(Array.from(next))); } catch {}
+              return next;
+            });
+          }
+        }
         setAnswer("");
       } catch {
         setChatHistory((prev) => [
@@ -499,8 +522,11 @@ export function TutorPage() {
               {QUICK_OPTIONS.map((opt) => (
                 <button
                   key={opt.type}
-                  className="mg-quick-option"
-                  onClick={() => handleGuidance(opt.type, opt.text)}
+                  className={`mg-quick-option ${activeGuidanceOption === opt.type ? "active" : ""}`}
+                  onClick={() => {
+                    setActiveGuidanceOption(opt.type);
+                    void handleGuidance(opt.type, opt.text);
+                  }}
                   disabled={loading}
                 >
                   {opt.text}
@@ -671,9 +697,8 @@ export function TutorPage() {
                             )}
                           </div>
                           {(() => {
-                            const prog = userConceptsMap[q.concept_id];
-                            const isSolved = prog && (prog.indepCount > 0 || prog.pKnow >= 0.70);
-                            const isAttempted = prog && prog.evidenceCount > 0;
+                            const isSolved = solvedQIds.has(q.id);
+                            const isAttempted = attemptedQIds.has(q.id);
                             if (isSolved) {
                               return (
                                 <span className="mg-pill mg-pill--green" style={{ fontSize: ".72rem", padding: ".2rem .55rem" }}>

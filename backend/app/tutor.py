@@ -625,6 +625,9 @@ def list_questions(subject: str | None = None) -> dict:
                 "topic_name": CONCEPT_FRIENDLY_NAMES.get(q["concept_id"], q["concept_id"]),
                 "subject": _question_subject(q["concept_id"]),
                 "ncert_reference": q.get("ncert_reference"),
+                "hint_ladder": q.get("hint_ladder", []),
+                "solution_steps": q.get("solution_steps", []),
+                "expected_answer": q.get("expected_answer"),
             }
             for q in all_qs
         ]
