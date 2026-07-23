@@ -1,9 +1,35 @@
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import prismLearningHero from "../assets/prism-learning-hero.png";
 import { PageTransition } from "../components/PageTransition";
+import { PrismArrowButton } from "../components/PrismArrowButton";
+import { PrismDiagnosticButton } from "../components/PrismDiagnosticButton";
+import { ScreenTearTransition } from "../components/ScreenTearTransition";
 
 export function StartPage() {
+  const navigate = useNavigate();
+  const iconRef = useRef<HTMLSpanElement>(null);
+
+  const [isFadingText, setIsFadingText] = useState(false);
+  const [tearOrigin, setTearOrigin] = useState<{ x: number; y: number } | null>(null);
+
+  const handleAuthClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (tearOrigin || isFadingText) return;
+
+    setIsFadingText(true);
+
+    if (iconRef.current) {
+      const rect = iconRef.current.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      setTearOrigin({ x, y });
+    } else {
+      setTearOrigin({ x: window.innerWidth / 3, y: window.innerHeight / 2 });
+    }
+  };
+
   return (
     <PageTransition className="app-shell">
       <section className="start-hero" aria-labelledby="page-title">
@@ -15,23 +41,13 @@ export function StartPage() {
           </p>
           <div className="hero-action">
             <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
-              <Link className="primary-action" to="/diagnostic">Start diagnostic</Link>
-              <Link
-                to="/auth"
-                style={{
-                  padding: "0.75rem 1.25rem",
-                  borderRadius: "14px",
-                  fontWeight: 700,
-                  fontSize: "0.9rem",
-                  color: "#f4f7ef",
-                  background: "rgba(23, 58, 44, 0.8)",
-                  border: "1px solid rgba(145, 221, 196, 0.3)",
-                  textDecoration: "none",
-                  transition: "all 0.2s"
-                }}
-              >
-                Sign In / Sign Up
-              </Link>
+              <PrismDiagnosticButton to="/diagnostic" text="Start diagnostic" />
+              <PrismArrowButton
+                iconRef={iconRef}
+                text="Sign In / Sign Up"
+                isFadingText={isFadingText}
+                onClick={handleAuthClick}
+              />
             </div>
             <p>Begin with a short check-in or log in as a Student or Teacher.</p>
           </div>
@@ -40,6 +56,16 @@ export function StartPage() {
           <img src={prismLearningHero} alt="Student working at a desk inside layers of translucent prism light" />
         </figure>
       </section>
+
+      {tearOrigin && (
+        <ScreenTearTransition
+          originX={tearOrigin.x}
+          originY={tearOrigin.y}
+          onComplete={() => navigate("/auth")}
+        />
+      )}
     </PageTransition>
   );
 }
+
+export default StartPage;

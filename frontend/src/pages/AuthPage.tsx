@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { PageTransition } from "../components/PageTransition";
 import { PrismParticleField } from "../components/PrismParticleField";
+import { PrismArrowButton } from "../components/PrismArrowButton";
+import { PrismCheckbox } from "../components/PrismCheckbox";
 
 const SIDECAR_URL = "http://localhost:9400";
 
@@ -16,6 +18,8 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [subscribeUpdates, setSubscribeUpdates] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -250,19 +254,34 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                   />
                 </div>
 
-                <motion.button
+                <div className="auth-field-group" style={{ margin: "1rem 0" }}>
+                  {mode === "signin" ? (
+                    <PrismCheckbox
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      label="Remember me on this device"
+                    />
+                  ) : (
+                    <PrismCheckbox
+                      checked={subscribeUpdates}
+                      onChange={(e) => setSubscribeUpdates(e.target.checked)}
+                      label="Send me AI tutor progress updates & analytics"
+                    />
+                  )}
+                </div>
+
+                <PrismArrowButton
                   type="submit"
                   disabled={loading}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  className="auth-submit-btn"
+                  fullWidth
+                  style={{ marginTop: "0.5rem" }}
                 >
                   {loading
                     ? "Processing..."
                     : mode === "signin"
                     ? "Sign In to PRISM"
                     : "Create Account"}
-                </motion.button>
+                </PrismArrowButton>
               </form>
             </motion.div>
           </AnimatePresence>
