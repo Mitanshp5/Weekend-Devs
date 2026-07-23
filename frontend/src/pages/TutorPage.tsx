@@ -389,28 +389,26 @@ export function TutorPage() {
           learner_answer: submissionAnswer || undefined,
         });
 
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: "tutor",
-            content: resp.message,
-            mode: resp.response_mode,
-            isFallback: resp.is_fallback,
-            confidence: resp.confidence,
-          },
-        ]);
-
         if (resp.is_correct) {
           setSolved(true);
+          const finalMsg = resp.message || "🎉 Correct! You've mastered this question. Great job!";
           setChatHistory((prev) => [
             ...prev,
             {
               role: "tutor",
-              content: "🎉 Correct! You've mastered this question. Great job!",
-              mode: "check_thinking",
+              content: finalMsg.toLowerCase().includes("correct") ? finalMsg : `🎉 Correct! ${finalMsg}`,
+              mode: resp.response_mode || "check_thinking",
             },
           ]);
         } else {
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              role: "tutor",
+              content: resp.message,
+              mode: resp.response_mode,
+            },
+          ]);
           if (!isHint) {
             setAttempt((a) => Math.min(a + 1, 3));
           } else {
@@ -864,15 +862,6 @@ export function TutorPage() {
                         }}>
                           {modeInfo.icon} {modeInfo.userLabel}
                         </span>
-                        {msg.isFallback && (
-                          <span style={{
-                            fontSize: ".6rem", color: "#b2bec3",
-                            background: "rgba(0,0,0,0.04)",
-                            padding: ".1rem .3rem", borderRadius: ".2rem",
-                          }}>
-                            fallback
-                          </span>
-                        )}
                       </div>
                     )}
                     <div className={`mg-chat-bubble ${msg.role === "tutor" ? "mg-chat-bubble--tutor" : "mg-chat-bubble--learner"}`}>
