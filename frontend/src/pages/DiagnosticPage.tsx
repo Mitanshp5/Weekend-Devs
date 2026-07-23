@@ -20,7 +20,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageTransition } from "../components/PageTransition";
 import { MasteryBadge } from "../components/MasteryBadge";
-import { DonutChart } from "../components/DonutChart";
 import {
   fetchQuestions,
   postTutorRespond,
