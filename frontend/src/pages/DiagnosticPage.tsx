@@ -215,8 +215,8 @@ function StepRail({
           <div key={i} style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
             <div
               style={{
-                width: active ? "2.4rem" : "2rem",
-                height: active ? "2.4rem" : "2rem",
+                width: active ? "2rem" : "1.6rem",
+                height: active ? "2rem" : "1.6rem",
                 borderRadius: "50%",
                 background: done
                   ? color
@@ -241,7 +241,7 @@ function StepRail({
             {i < total - 1 && (
               <div
                 style={{
-                  width: "1.5rem",
+                  width: "1rem",
                   height: "2px",
                   borderRadius: "1px",
                   background: done ? color : "#e9ecef",
@@ -444,17 +444,18 @@ export function DiagnosticPage() {
           style={{
             minHeight: "100dvh",
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "center",
-            padding: "2rem 1rem",
+            padding: "clamp(1rem, 3vw, 2rem) 1rem",
+            overflowY: "auto",
           }}
         >
           <div
             style={{
-              width: "min(90vw, 640px)",
+              width: "min(95vw, 580px)",
               background: "#fff",
               borderRadius: "1.25rem",
-              padding: "2.5rem",
+              padding: "clamp(1.2rem, 3vw, 2rem)",
               boxShadow: "0 8px 40px rgba(16,40,30,.13)",
             }}
           >
@@ -568,7 +569,16 @@ export function DiagnosticPage() {
               }}
             >
               {results.map((r) => {
-                const pct = Math.round(r.pKnow * 100);
+                const friendlyMsg = r.pKnow >= 0.70
+                  ? "Ready for next challenge"
+                  : r.pKnow >= 0.40
+                    ? "Getting there"
+                    : "Needs review";
+                const friendlyColor = r.pKnow >= 0.70
+                  ? "#1bb576"
+                  : r.pKnow >= 0.40
+                    ? "#e67e22"
+                    : "#d63031";
                 return (
                   <div
                     key={r.conceptId}
@@ -586,15 +596,15 @@ export function DiagnosticPage() {
                   >
                     <div
                       style={{
-                        width: "2rem",
-                        height: "2rem",
+                        width: "1.8rem",
+                        height: "1.8rem",
                         borderRadius: "50%",
                         background: r.isCorrect
                           ? "rgba(27,181,118,.12)"
                           : "rgba(214,48,49,.12)",
                         display: "grid",
                         placeItems: "center",
-                        fontSize: ".9rem",
+                        fontSize: ".85rem",
                         flexShrink: 0,
                       }}
                     >
@@ -614,15 +624,24 @@ export function DiagnosticPage() {
                       >
                         {CONCEPT_NAMES[r.conceptId] ?? r.conceptId}
                       </div>
+                      <div
+                        style={{
+                          fontFamily: '"Inter", "Segoe UI", sans-serif',
+                          fontSize: ".72rem",
+                          color: friendlyColor,
+                          fontWeight: 600,
+                          marginTop: ".15rem",
+                        }}
+                      >
+                        {friendlyMsg}
+                      </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexShrink: 0 }}>
-                      <DonutChart
-                        value={pct}
-                        size={36}
-                        strokeWidth={4}
-                        color={r.isCorrect ? "#1bb576" : "#d63031"}
-                        label={`${pct}%`}
-                        labelSize={9}
+                      <MasteryBadge
+                        pKnow={r.pKnow}
+                        band={r.band}
+                        message={r.isCorrect ? "✓ Correct" : "✗ Needs practice"}
+                        size="sm"
                       />
                     </div>
                   </div>
@@ -906,13 +925,21 @@ export function DiagnosticPage() {
                   <span
                     style={{
                       marginLeft: "auto",
-                      fontFamily: '"SFMono-Regular", Consolas, monospace',
+                      fontFamily: '"Inter", "Segoe UI", sans-serif',
                       fontSize: ".72rem",
-                      color: "#636e72",
-                      fontFeatureSettings: '"tnum"',
+                      color: results[results.length - 1].pKnow >= 0.70
+                        ? "#1bb576"
+                        : results[results.length - 1].pKnow >= 0.40
+                          ? "#e67e22"
+                          : "#d63031",
+                      fontWeight: 600,
                     }}
                   >
-                    P(know) = {Math.round((results[results.length - 1].pKnow) * 100)}%
+                    {results[results.length - 1].pKnow >= 0.70
+                      ? "Ready for next challenge"
+                      : results[results.length - 1].pKnow >= 0.40
+                        ? "Getting there — one more check"
+                        : "Let's rebuild this idea"}
                   </span>
                 )}
               </div>
@@ -937,6 +964,12 @@ export function DiagnosticPage() {
               gap: ".75rem",
               flexWrap: "wrap",
               justifyContent: "flex-end",
+              position: "sticky",
+              bottom: 0,
+              background: "linear-gradient(transparent, rgba(255,255,255,.95) 20%)",
+              paddingTop: "1rem",
+              paddingBottom: ".5rem",
+              zIndex: 10,
             }}
           >
             {phase === "answering" && (

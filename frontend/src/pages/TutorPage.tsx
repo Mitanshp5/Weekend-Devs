@@ -101,38 +101,24 @@ const MODE_DISPLAY: Record<string, { label: string; userLabel: string; color: st
   },
 };
 
-const HINT_BUTTONS: { key: string; label: string; color: string; border: string; bg: string; tooltip: string }[] = [
+const HINT_BUTTONS: { key: string; label: string; color: string; border: string; bg: string; tooltip: string; attemptIndex: number }[] = [
   {
-    key: "socratic_hint",
-    label: "💭 Think About It",
+    key: "hint",
+    label: "💭 Get a Hint",
     color: "#1bb576",
     border: "#1bb576",
     bg: "rgba(27,181,118,.06)",
-    tooltip: "Socratic Hint — a question to guide your thinking without giving the answer",
+    tooltip: "A guiding question or clue to help you think through the problem",
+    attemptIndex: 0,
   },
   {
-    key: "explain_error",
-    label: "🔍 What Went Wrong",
-    color: "#e67e22",
-    border: "#e67e22",
-    bg: "rgba(230,126,34,.06)",
-    tooltip: "Error Explanation — identifies the specific mistake in your approach",
-  },
-  {
-    key: "worked_step",
-    label: "📐 Show Me a Step",
-    color: "#553285",
-    border: "#553285",
-    bg: "rgba(85,50,133,.06)",
-    tooltip: "Worked Step — walks through one key step of the solution",
-  },
-  {
-    key: "direct_explanation",
-    label: "📖 Full Solution",
+    key: "solution",
+    label: "📖 Show Solution",
     color: "#d63031",
     border: "#d63031",
     bg: "rgba(214,48,49,.06)",
-    tooltip: "Direct Explanation — the complete worked solution",
+    tooltip: "See the complete worked solution with step-by-step explanation",
+    attemptIndex: 3,
   },
 ];
 
@@ -160,24 +146,59 @@ function getQuestionTypeLabel(qt?: string): { label: string; icon: string } {
   }
 }
 
-/* Group questions by chapter (concept_id) */
-function groupByChapter(questions: QuestionSummary[]): { chapter: string; chapterName: string; questions: QuestionSummary[] }[] {
-  const map = new Map<string, QuestionSummary[]>();
-  for (const q of questions) {
-    const key = q.concept_id;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(q);
+/* Parent chapter grouping — groups related concepts under one NCERT-aligned chapter */
+const CHAPTER_GROUPS: { key: string; chapter: string; concepts: string[]; subject: string }[] = [
+  // Math
+  { key: "ch_linear_eq", chapter: "Linear Equations — Foundations", concepts: ["num.signed_operations", "eq.inverse_operations", "num.mul_div_fluency", "math.linear_equations", "eq.multi_step", "eq.word_translation"], subject: "mathematics" },
+  { key: "ch_rational", chapter: "Rational Numbers", concepts: ["math.rational_numbers"], subject: "mathematics" },
+  { key: "ch_quadrilaterals", chapter: "Understanding Quadrilaterals", concepts: ["math.quadrilaterals"], subject: "mathematics" },
+  { key: "ch_data", chapter: "Data Handling", concepts: ["math.data_handling"], subject: "mathematics" },
+  { key: "ch_squares", chapter: "Squares and Square Roots", concepts: ["math.squares_roots"], subject: "mathematics" },
+  // Science
+  { key: "ch_crop", chapter: "Crop Production and Management", concepts: ["sci.crop_production"], subject: "science" },
+  { key: "ch_micro", chapter: "Microorganisms: Friend and Foe", concepts: ["sci.microorganisms"], subject: "science" },
+  { key: "ch_coal", chapter: "Coal and Petroleum", concepts: ["sci.coal_petroleum"], subject: "science" },
+  { key: "ch_combust", chapter: "Combustion and Flame", concepts: ["sci.combustion_flame"], subject: "science" },
+  { key: "ch_conserve", chapter: "Conservation of Plants and Animals", concepts: ["sci.conservation"], subject: "science" },
+  // English
+  { key: "ch_xmas", chapter: "The Best Christmas Present in the World", concepts: ["eng.christmas_present"], subject: "english" },
+  { key: "ch_tsunami", chapter: "The Tsunami", concepts: ["eng.tsunami"], subject: "english" },
+  { key: "ch_glimpses", chapter: "Glimpses of the Past", concepts: ["eng.glimpses_past"], subject: "english" },
+  { key: "ch_bepin", chapter: "Bepin Choudhury's Lapse of Memory", concepts: ["eng.bepin_choudhury"], subject: "english" },
+  { key: "ch_summit", chapter: "The Summit Within", concepts: ["eng.summit_within"], subject: "english" },
+];
+
+/* Group questions by parent chapter, with topic labels per concept */
+function groupByChapter(questions: QuestionSummary[]): { chapter: string; chapterName: string; questions: (QuestionSummary & { topicName?: string })[] }[] {
+  const groups: { chapter: string; chapterName: string; questions: (QuestionSummary & { topicName?: string })[] }[] = [];
+  const assigned = new Set<string>();
+
+  for (const cg of CHAPTER_GROUPS) {
+    const qs = questions
+      .filter((q) => cg.concepts.includes(q.concept_id))
+      .map((q) => ({ ...q, topicName: CONCEPT_NAMES[q.concept_id] || q.concept_id }))
+      .sort((a, b) => a.difficulty - b.difficulty);
+    if (qs.length > 0) {
+      groups.push({ chapter: cg.key, chapterName: cg.chapter, questions: qs });
+      qs.forEach((q) => assigned.add(q.id));
+    }
   }
-  const groups: { chapter: string; chapterName: string; questions: QuestionSummary[] }[] = [];
-  for (const [chapter, qs] of map) {
-    // Sort questions by difficulty ascending within each chapter
-    qs.sort((a, b) => a.difficulty - b.difficulty);
-    groups.push({
-      chapter,
-      chapterName: qs[0]?.chapter_name || CONCEPT_NAMES[chapter] || chapter,
-      questions: qs,
-    });
+
+  // Catch any ungrouped questions
+  const ungrouped = questions.filter((q) => !assigned.has(q.id));
+  if (ungrouped.length > 0) {
+    const map = new Map<string, (QuestionSummary & { topicName?: string })[]>();
+    for (const q of ungrouped) {
+      const key = q.concept_id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push({ ...q, topicName: CONCEPT_NAMES[q.concept_id] || q.concept_id });
+    }
+    for (const [concept, qs] of map) {
+      qs.sort((a, b) => a.difficulty - b.difficulty);
+      groups.push({ chapter: concept, chapterName: CONCEPT_NAMES[concept] || concept, questions: qs });
+    }
   }
+
   return groups;
 }
 
@@ -575,6 +596,37 @@ export function TutorPage() {
                               </span>
                             </div>
                             <div className="mg-lesson-title">{q.prompt}</div>
+                            {(q as QuestionSummary & { topicName?: string }).topicName && (
+                              <span style={{
+                                display: "inline-block",
+                                marginTop: ".25rem",
+                                padding: ".1rem .4rem",
+                                borderRadius: ".6rem",
+                                fontSize: ".62rem",
+                                fontWeight: 600,
+                                color: "#553285",
+                                background: "rgba(85,50,133,.06)",
+                                border: "1px solid rgba(85,50,133,.1)",
+                              }}>
+                                {(q as QuestionSummary & { topicName?: string }).topicName}
+                              </span>
+                            )}
+                            {q.ncert_reference && (
+                              <span style={{
+                                display: "inline-block",
+                                marginTop: ".25rem",
+                                marginLeft: ".3rem",
+                                padding: ".1rem .4rem",
+                                borderRadius: ".6rem",
+                                fontSize: ".62rem",
+                                fontWeight: 600,
+                                color: "#1bb576",
+                                background: "rgba(27,181,118,.06)",
+                                border: "1px solid rgba(27,181,118,.15)",
+                              }}>
+                                📚 {q.ncert_reference.book.split(" — ")[0]} · {q.ncert_reference.chapter.split(":")[0]}
+                              </span>
+                            )}
                           </div>
                           <span className="mg-lesson-meta">Q{idx + 1}</span>
                         </div>
@@ -623,31 +675,24 @@ export function TutorPage() {
 
             {/* Hint buttons with tooltips */}
             {!solved && (
-              <div className="mg-hint-row">
-                {HINT_BUTTONS.map((hint, idx) => (
-                  <div key={idx} style={{ position: "relative", display: "inline-block" }}>
-                    <button
-                      className="mg-hint-btn"
-                      onClick={() => handleAction(undefined, idx)}
-                      disabled={loading}
-                      style={{
-                        borderColor: hint.border,
-                        color: hint.color,
-                        background: attempt === idx ? hint.bg : "#fff",
-                      }}
-                      title={hint.tooltip}
-                    >
-                      {hint.label}
-                      <span style={{
-                        marginLeft: ".3rem",
-                        fontSize: ".6rem",
-                        opacity: 0.6,
-                        cursor: "help",
-                      }}>
-                        ℹ️
-                      </span>
-                    </button>
-                  </div>
+              <div className="mg-hint-row" style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".5rem" }}>
+                {HINT_BUTTONS.map((hint) => (
+                  <button
+                    key={hint.key}
+                    className="mg-hint-btn"
+                    onClick={() => handleAction(undefined, hint.attemptIndex)}
+                    disabled={loading}
+                    style={{
+                      borderColor: hint.border,
+                      color: hint.color,
+                      background: hint.bg,
+                      flex: "1 1 auto",
+                      minWidth: "8rem",
+                    }}
+                    title={hint.tooltip}
+                  >
+                    {hint.label}
+                  </button>
                 ))}
               </div>
             )}

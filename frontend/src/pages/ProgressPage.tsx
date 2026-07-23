@@ -380,7 +380,11 @@ export function ProgressPage() {
                       <div className="mg-card" style={{ padding: ".7rem .9rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap" }}>
                           <strong style={{ color: "#2d3436", fontSize: ".9rem" }}>
-                            {(entry.p_know * 100).toFixed(0)}%
+                            {entry.p_know >= 0.70
+                              ? "Strong"
+                              : entry.p_know >= 0.40
+                                ? "Developing"
+                                : "Needs review"}
                           </strong>
                           <MasteryBadge
                             pKnow={entry.p_know}

@@ -62,7 +62,14 @@ export interface QuestionSummary {
   question_type?: string;
   options?: string[];
   chapter_name?: string;
+  topic_name?: string;
   subject?: string;
+  ncert_reference?: {
+    book: string;
+    chapter: string;
+    page_range?: string;
+    exercise?: string;
+  };
 }
 
 export interface CohortResponse {

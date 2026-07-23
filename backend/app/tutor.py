@@ -60,6 +60,7 @@ QUESTION_BANK: dict[str, dict[str, Any]] = {
             "eq.sign_not_transferred": "You found the right magnitude but lost the sign. Both numbers are negative, so the sum is also negative.",
             "num.subtraction_confusion": "It looks like you subtracted instead of adding. When both numbers are negative, add their magnitudes.",
         },
+        "ncert_reference": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
     },
     "q.eq.02": {
         "id": "q.eq.02",
@@ -81,6 +82,7 @@ QUESTION_BANK: dict[str, dict[str, Any]] = {
             "correct": "Correct! Subtracting 5 from both sides isolates x.",
             "eq.added_instead_of_subtracted": "You added 5 instead of subtracting. The inverse of +5 is −5.",
         },
+        "ncert_reference": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
     },
     "q.eq.03": {
         "id": "q.eq.03",
@@ -104,6 +106,7 @@ QUESTION_BANK: dict[str, dict[str, Any]] = {
             "eq.stops_before_division": "You correctly removed 5, but x is still multiplied by 3.",
             "eq.sign_not_transferred": "Check the sign: subtracting 5 vs adding 5 changes the result.",
         },
+        "ncert_reference": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
     },
     "q.eq.04": {
         "id": "q.eq.04",
@@ -130,6 +133,7 @@ QUESTION_BANK: dict[str, dict[str, Any]] = {
             "eq.stops_before_adding": "You divided correctly but forgot to undo the −3.",
             "eq.wrong_distribution": "Check your distribution — divide the whole right side by 2, not just part.",
         },
+        "ncert_reference": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
     },
     "q.eq.05": {
         "id": "q.eq.05",
@@ -160,6 +164,7 @@ QUESTION_BANK: dict[str, dict[str, Any]] = {
             "eq.wrong_variable_assignment": "Check which number you called x — the problem says 'twice another number'.",
             "eq.stops_before_division": "You simplified correctly but stopped before dividing by 3.",
         },
+        "ncert_reference": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
     },
 }
 
@@ -202,6 +207,8 @@ def _fallback_response(
     hints = question["hint_ladder"]
     feedback = question.get("feedback", {})
     solution_steps = question.get("solution_steps", [])
+    is_mcq = question.get("answer_type") == "mcq"
+    ncert_ref = question.get("ncert_reference")
 
     if mode == "socratic_hint":
         message = hints[0] if hints else "Think about what operation to use."
@@ -221,10 +228,28 @@ def _fallback_response(
         else:
             message = hints[-1] if hints else "Review the concept card."
     else:  # direct_explanation
-        if solution_steps:
-            message = "Here's the full solution: " + " → ".join(solution_steps)
-        else:
-            message = feedback.get("correct", "Review the concept card for the full explanation.")
+        parts: list[str] = []
+        if is_mcq:
+            correct_letter = question.get("expected_answer", "")
+            options = question.get("options", [])
+            letter_idx = ord(correct_letter.upper()) - 65 if correct_letter else -1
+            correct_text = options[letter_idx] if 0 <= letter_idx < len(options) else correct_letter
+            parts.append(f"The correct answer is {correct_letter}) {correct_text}.")
+        # Add all hints as reasoning chain
+        if hints:
+            parts.append("Here's why: " + " ".join(hints))
+        # Add solution steps if they have substance
+        if solution_steps and not (len(solution_steps) == 1 and solution_steps[0].startswith("The correct answer")):
+            parts.append("Steps: " + " → ".join(solution_steps))
+        # Add NCERT reference
+        if ncert_ref:
+            ref_text = f"📚 Reference: {ncert_ref.get('book', 'NCERT Class 8')}"
+            if ncert_ref.get('chapter'):
+                ref_text += f", {ncert_ref['chapter']}"
+            if ncert_ref.get('exercise'):
+                ref_text += f" — {ncert_ref['exercise']}"
+            parts.append(ref_text)
+        message = " ".join(parts) if parts else feedback.get("correct", "Review the concept card for the full explanation.")
 
     return {
         "response_mode": mode,
@@ -462,7 +487,7 @@ def tutor_respond(req: TutorRequest) -> dict:
                         concept_id,
                         likely_blocker,
                         blocker_conf,
-                        f"{new_evidence} attempts on {concept_id}",
+                        f"{new_evidence} attempts on {CONCEPT_FRIENDLY_NAMES.get(concept_id, concept_id)}",
                         "Needs direct intervention" if band == "needs_prerequisite_support" else "Keep learning",
                         sum_row["id"],
                     ),
@@ -482,7 +507,7 @@ def tutor_respond(req: TutorRequest) -> dict:
                         concept_id,
                         likely_blocker,
                         blocker_conf,
-                        f"{new_evidence} attempts on {concept_id}",
+                        f"{new_evidence} attempts on {CONCEPT_FRIENDLY_NAMES.get(concept_id, concept_id)}",
                         "Needs direct intervention" if band == "needs_prerequisite_support" else "Keep learning",
                     ),
                 )
@@ -596,7 +621,9 @@ def list_questions(subject: str | None = None) -> dict:
                 "question_type": q.get("answer_type", "numeric"),
                 "options": q.get("options"),
                 "chapter_name": CONCEPT_FRIENDLY_NAMES.get(q["concept_id"], q["concept_id"]),
+                "topic_name": CONCEPT_FRIENDLY_NAMES.get(q["concept_id"], q["concept_id"]),
                 "subject": _question_subject(q["concept_id"]),
+                "ncert_reference": q.get("ncert_reference"),
             }
             for q in all_qs
         ]
