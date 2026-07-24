@@ -7,11 +7,12 @@ PRISM is an adaptive, offline-resilient STEM learning platform for Grade 8 class
 
 ## 🌟 The 3-Minute Judge Flow
 
+0. **Cinematic Project Overview (`/`)**: Interactive scroll-driven presentation covering PRISM's problem statement, 4-stage pedagogical loop (*Observe → Map → Guide → Verify*), dual learner & evaluator experiences, low-bandwidth architecture, and trust model.
 1. **Diagnostic Probe (`/diagnostic`)**: 5-question sequential probe across prerequisite concepts → evidence-based BKT level placement (Foundational / Grade-Level / Advanced).
 2. **Adaptive Micro-Lesson (`/lesson/:conceptId`)**: Targeted concept practice stage with real-time BKT probability updates, hint ladders, and post-attempt evidence tracking.
-3. **Evidence & Recommendation Panel**: Slide-in panel showing PRISM's explainable recommendation with transparent reason trace, evidence ledger, and learner controls (Review, Easier, Harder, Retry).
+3. **Evidence & Recommendation Panel**: Slide-in panel showing PRISM's explainable recommendation with transparent reason trace, evidence ledger, and learner controls (*Review, Easier, Harder, Retry*).
 4. **Socratic AI Tutor (`/tutor`)**: Structured 4-mode tutor escalation ladder (*Think About It → What Went Wrong → Show Me a Step → Full Solution*) with deterministic authored fallback and curriculum grounding.
-5. **Progress & Evidence History (`/progress`)**: Subject results summary, donut chart analytics, concept progress bars, and full attempt timeline drill-downs.
+5. **Progress & Evidence History (`/progress`)**: Subject results summary, analytics, concept progress bars, and full attempt timeline drill-downs.
 6. **Teacher Intervention Board (`/teacher`)**: Cohort command center, student intervention cards, and class-wide misconception cluster analysis.
 
 ---
@@ -73,7 +74,7 @@ Log in or switch accounts using any of these credentials:
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │ PRISM React PWA Client (Vite, TypeScript, Motion, CSS)          │
-│ Learner Workspace · Diagnostic · Tutor · Progress · Teacher UI │
+│ Overview · Diagnostic · Tutor · Progress · Teacher Dashboard    │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │ REST API
 ┌───────────────────────────────▼─────────────────────────────────┐
@@ -114,7 +115,7 @@ cd frontend && npm test -- --run && npm run build
 
 ## 📁 Repository Layout
 
-- `frontend/` — React PWA frontend (Pages: `DiagnosticPage`, `LessonPage`, `TutorPage`, `ProgressPage`, `TeacherDashboardPage`, `CatalogPage`, `SubjectPathPage`, `AuthPage`)
+- `frontend/` — React PWA frontend (Pages: `StartPage`, `DiagnosticPage`, `LessonPage`, `TutorPage`, `ProgressPage`, `TeacherDashboardPage`, `CatalogPage`, `SubjectPathPage`, `AuthPage`)
 - `backend/app/` — FastAPI application modules (`tutor.py`, `guidance.py`, `learner.py`, `progress.py`, `teacher.py`, `scoring.py`, `mastery.py`, `question_bank.py`, `database.py`)
-- `reference_material/` — Master specification, feature playbook, and guide documentation
+- `docs/` — System specifications, demo script, metrics explanation, architecture observations, and QA checklist
 - `compose.yaml` — Docker Compose configuration for PostgreSQL 16

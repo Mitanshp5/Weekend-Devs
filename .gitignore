@@ -16,6 +16,10 @@ dist/
 build/
 *.tsbuildinfo
 reference_material/
+research/
+content.md
+CONTEXT.md
+skills-lock.json
 *.db
 start.bat
 stop.bat
@@ -26,6 +30,7 @@ reference_screenshots/
 backend/.pytest_cache/
 backend/pytest_out.txt
 backend/prism_api.egg-info/
+backend/image.png
 
 # Flowwatch sidecar
 flowwatch-sidecar/node_modules/
