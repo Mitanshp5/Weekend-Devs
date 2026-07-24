@@ -7,6 +7,7 @@ import { AuthPage } from "./pages/AuthPage";
 import { CatalogPage } from "./pages/CatalogPage";
 import { DiagnosticPage } from "./pages/DiagnosticPage";
 import { OAuthCallback } from "./pages/OAuthCallback";
+import { LessonPage } from "./pages/LessonPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { ProgressPage } from "./pages/ProgressPage";
 import { RoleOnboardingPage } from "./pages/RoleOnboardingPage";
@@ -37,16 +38,7 @@ function AppRoutes() {
         <Route element={<DashboardShell />}>
           <Route path="/learn" element={<CatalogPage />} />
           <Route path="/learn/:subjectSlug" element={<SubjectPathPage />} />
-          <Route
-            path="/lesson/:lessonId"
-            element={
-              <PlaceholderPage
-                eyebrow="Lesson"
-                title="Focused learning block"
-                description="The active micro-lesson and embedded practice will live here."
-              />
-            }
-          />
+          <Route path="/lesson/:lessonId" element={<LessonPage />} />
           <Route path="/tutor" element={<TutorPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/teacher" element={<TeacherDashboardPage />} />

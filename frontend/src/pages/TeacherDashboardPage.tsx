@@ -265,17 +265,29 @@ function StudentInterventionCard({ student }: { student: StudentCardData }) {
   );
 }
 
+const ERROR_TAG_FRIENDLY: Record<string, string> = {
+  "eq.sign_not_transferred": "Sign not transferred correctly",
+  "num.subtraction_confusion": "Confusion between addition and subtraction",
+  "eq.added_instead_of_subtracted": "Added instead of subtracted",
+  "eq.stops_before_division": "Stops before final division step",
+  "eq.stops_before_adding": "Stops before adding back",
+  "eq.wrong_distribution": "Incorrect distribution",
+  "eq.wrong_variable_assignment": "Wrong variable assignment",
+};
+
 function ClusterCard({ cluster }: { cluster: ClusterData }) {
   const affectedPct = cluster.total_active > 0
     ? Math.round((cluster.affected_count / cluster.total_active) * 100)
     : 0;
   const impactPct = Math.round(cluster.impact_score * 100);
+  const friendlyTag = ERROR_TAG_FRIENDLY[cluster.error_tag]
+    || cluster.error_tag.replace(/_/g, " ").replace(/\beq\.|num\.|sci\.|eng\./g, "");
 
   return (
     <div className="mg-card">
       <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap" }}>
         <strong style={{ color: "#2d3436", fontSize: ".95rem", fontFamily: '"Inter", sans-serif' }}>
-          {cluster.error_tag.replace(/_/g, " ").replace(/\beq\.|num\./g, "")}
+          {friendlyTag}
         </strong>
         <span className="mg-pill mg-pill--red">
           {cluster.affected_count}/{cluster.total_active} learners ({affectedPct}%)

@@ -17,12 +17,51 @@ def _mcq(qid: str, concept: str, subject: str, diff: float, prompt: str,
         for pat, tag in rubric_items:
             fb[tag] = f"Not quite — review the concept related to {tag.split('.')[-1].replace('_', ' ')}."
             rb.append({"pattern": pat, "error_tag": tag, "confidence": 0.9})
+
+    # Derive richer solution steps from answer + hints
+    letter_idx = ord(answer.upper()) - 65
+    correct_text = options[letter_idx] if 0 <= letter_idx < len(options) else answer
+    solution_steps = [
+        f"The correct answer is {answer}) {correct_text}.",
+    ]
+    if hints:
+        solution_steps.append(hints[-1])  # Add the most direct hint as reasoning
+
     return {
         "id": qid, "concept_id": concept, "subject": subject, "difficulty": diff,
         "prompt": prompt, "answer_type": "mcq", "expected_answer": answer,
-        "options": options, "solution_steps": [f"The correct answer is {answer}"],
+        "options": options, "solution_steps": solution_steps,
         "hint_ladder": hints, "feedback": fb, "rubric": rb,
+        "ncert_reference": _NCERT_REFS.get(concept),
     }
+
+
+# NCERT Class 8 reference mapping per concept
+_NCERT_REFS: dict[str, dict[str, str]] = {
+    # Mathematics
+    "math.rational_numbers": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 1: Rational Numbers", "page_range": "pp. 1–20"},
+    "math.linear_equations": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
+    "num.signed_operations": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
+    "eq.inverse_operations": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
+    "eq.multi_step": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
+    "eq.word_translation": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
+    "num.mul_div_fluency": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 2: Linear Equations in One Variable", "page_range": "pp. 21–35"},
+    "math.quadrilaterals": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 3: Understanding Quadrilaterals", "page_range": "pp. 36–56"},
+    "math.data_handling": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 5: Data Handling", "page_range": "pp. 69–96"},
+    "math.squares_roots": {"book": "Mathematics — NCERT Class 8", "chapter": "Chapter 6: Squares and Square Roots", "page_range": "pp. 97–114"},
+    # Science
+    "sci.crop_production": {"book": "Science — NCERT Class 8", "chapter": "Chapter 1: Crop Production and Management", "page_range": "pp. 1–12"},
+    "sci.microorganisms": {"book": "Science — NCERT Class 8", "chapter": "Chapter 2: Microorganisms: Friend and Foe", "page_range": "pp. 13–24"},
+    "sci.coal_petroleum": {"book": "Science — NCERT Class 8", "chapter": "Chapter 5: Coal and Petroleum", "page_range": "pp. 47–54"},
+    "sci.combustion_flame": {"book": "Science — NCERT Class 8", "chapter": "Chapter 6: Combustion and Flame", "page_range": "pp. 55–64"},
+    "sci.conservation": {"book": "Science — NCERT Class 8", "chapter": "Chapter 7: Conservation of Plants and Animals", "page_range": "pp. 65–76"},
+    # English
+    "eng.christmas_present": {"book": "Honeydew — NCERT Class 8", "chapter": "Chapter 1: The Best Christmas Present in the World"},
+    "eng.tsunami": {"book": "Honeydew — NCERT Class 8", "chapter": "Chapter 2: The Tsunami"},
+    "eng.glimpses_past": {"book": "Honeydew — NCERT Class 8", "chapter": "Chapter 3: Glimpses of the Past"},
+    "eng.bepin_choudhury": {"book": "Honeydew — NCERT Class 8", "chapter": "Chapter 4: Bepin Choudhury's Lapse of Memory"},
+    "eng.summit_within": {"book": "Honeydew — NCERT Class 8", "chapter": "Chapter 5: The Summit Within"},
+}
 
 # ═══════════════════════════════════════════════════════════════════════════
 # MATHEMATICS — 5 units × 10 MCQs = 50

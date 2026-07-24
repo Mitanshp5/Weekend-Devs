@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PageTransition } from "../components/PageTransition";
 import {
   fetchQuestions,
+  fetchProgress,
   postGuidance,
   postTutorRespond,
   type QuestionSummary,
@@ -47,8 +48,10 @@ export const CONCEPT_NAMES: Record<string, string> = {
   "eng.summit_within": "The Summit Within",
 };
 
-/* Map concept_id prefix → subject for filtering */
-function getSubjectForConcept(conceptId: string): string {
+/* Map question / concept_id → subject for filtering */
+function getSubjectForConcept(q: QuestionSummary): string {
+  if (q.subject) return q.subject;
+  const conceptId = q.concept_id || "";
   if (conceptId.startsWith("math.") || conceptId.startsWith("num.") || conceptId.startsWith("eq.")) return "mathematics";
   if (conceptId.startsWith("sci.")) return "science";
   if (conceptId.startsWith("eng.")) return "english";
@@ -101,38 +104,24 @@ const MODE_DISPLAY: Record<string, { label: string; userLabel: string; color: st
   },
 };
 
-const HINT_BUTTONS: { key: string; label: string; color: string; border: string; bg: string; tooltip: string }[] = [
+const HINT_BUTTONS: { key: string; label: string; color: string; border: string; bg: string; tooltip: string; attemptIndex: number }[] = [
   {
-    key: "socratic_hint",
-    label: "💭 Think About It",
+    key: "hint",
+    label: "💭 Get a Hint",
     color: "#1bb576",
     border: "#1bb576",
     bg: "rgba(27,181,118,.06)",
-    tooltip: "Socratic Hint — a question to guide your thinking without giving the answer",
+    tooltip: "A guiding question or clue to help you think through the problem",
+    attemptIndex: 0,
   },
   {
-    key: "explain_error",
-    label: "🔍 What Went Wrong",
-    color: "#e67e22",
-    border: "#e67e22",
-    bg: "rgba(230,126,34,.06)",
-    tooltip: "Error Explanation — identifies the specific mistake in your approach",
-  },
-  {
-    key: "worked_step",
-    label: "📐 Show Me a Step",
-    color: "#553285",
-    border: "#553285",
-    bg: "rgba(85,50,133,.06)",
-    tooltip: "Worked Step — walks through one key step of the solution",
-  },
-  {
-    key: "direct_explanation",
-    label: "📖 Full Solution",
+    key: "solution",
+    label: "📖 Show Solution",
     color: "#d63031",
     border: "#d63031",
     bg: "rgba(214,48,49,.06)",
-    tooltip: "Direct Explanation — the complete worked solution",
+    tooltip: "See the complete worked solution with step-by-step explanation",
+    attemptIndex: 3,
   },
 ];
 
@@ -141,6 +130,87 @@ const QUICK_OPTIONS = [
   { text: "What should I study next?", type: "what_to_study_next" },
   { text: "Recommend practice questions", type: "recommend_practice" },
 ];
+
+/* Difficulty float → user-facing label + color */
+function getDifficultyLabel(d: number): { label: string; color: string; bg: string } {
+  if (d <= 0.35) return { label: "Easy", color: "#1bb576", bg: "rgba(27,181,118,.08)" };
+  if (d <= 0.55) return { label: "Medium", color: "#e67e22", bg: "rgba(230,126,34,.08)" };
+  return { label: "Hard", color: "#d63031", bg: "rgba(214,48,49,.08)" };
+}
+
+/* Question type display */
+function getQuestionTypeLabel(qt?: string): { label: string; icon: string } {
+  switch (qt) {
+    case "mcq": return { label: "MCQ", icon: "☑️" };
+    case "numeric": return { label: "Numeric", icon: "🔢" };
+    case "multiple_correct": return { label: "Multi-Select", icon: "☑️" };
+    case "short_answer": return { label: "Short Answer", icon: "✏️" };
+    default: return { label: "MCQ", icon: "☑️" };
+  }
+}
+
+/* Parent chapter grouping — groups related concepts under one NCERT-aligned chapter */
+const CHAPTER_GROUPS: { key: string; chapter: string; concepts: string[]; subject: string }[] = [
+  // Math
+  { key: "ch_linear_eq", chapter: "Linear Equations — Foundations", concepts: ["num.signed_operations", "eq.inverse_operations", "num.mul_div_fluency", "math.linear_equations", "eq.multi_step", "eq.word_translation"], subject: "mathematics" },
+  { key: "ch_rational", chapter: "Rational Numbers", concepts: ["math.rational_numbers"], subject: "mathematics" },
+  { key: "ch_quadrilaterals", chapter: "Understanding Quadrilaterals", concepts: ["math.quadrilaterals"], subject: "mathematics" },
+  { key: "ch_data", chapter: "Data Handling", concepts: ["math.data_handling"], subject: "mathematics" },
+  { key: "ch_squares", chapter: "Squares and Square Roots", concepts: ["math.squares_roots"], subject: "mathematics" },
+  // Science
+  { key: "ch_crop", chapter: "Crop Production and Management", concepts: ["sci.crop_production"], subject: "science" },
+  { key: "ch_micro", chapter: "Microorganisms: Friend and Foe", concepts: ["sci.microorganisms"], subject: "science" },
+  { key: "ch_coal", chapter: "Coal and Petroleum", concepts: ["sci.coal_petroleum"], subject: "science" },
+  { key: "ch_combust", chapter: "Combustion and Flame", concepts: ["sci.combustion_flame"], subject: "science" },
+  { key: "ch_conserve", chapter: "Conservation of Plants and Animals", concepts: ["sci.conservation"], subject: "science" },
+  // English
+  { key: "ch_xmas", chapter: "The Best Christmas Present in the World", concepts: ["eng.christmas_present"], subject: "english" },
+  { key: "ch_tsunami", chapter: "The Tsunami", concepts: ["eng.tsunami"], subject: "english" },
+  { key: "ch_glimpses", chapter: "Glimpses of the Past", concepts: ["eng.glimpses_past"], subject: "english" },
+  { key: "ch_bepin", chapter: "Bepin Choudhury's Lapse of Memory", concepts: ["eng.bepin_choudhury"], subject: "english" },
+  { key: "ch_summit", chapter: "The Summit Within", concepts: ["eng.summit_within"], subject: "english" },
+];
+
+/* Group questions by parent chapter, with topic labels per concept */
+function groupByChapter(
+  questions: QuestionSummary[],
+  activeSubjectFilter: string
+): { chapter: string; chapterName: string; questions: (QuestionSummary & { topicName?: string })[] }[] {
+  const groups: { chapter: string; chapterName: string; questions: (QuestionSummary & { topicName?: string })[] }[] = [];
+  const assigned = new Set<string>();
+
+  const relevantChapterGroups = activeSubjectFilter === "all"
+    ? CHAPTER_GROUPS
+    : CHAPTER_GROUPS.filter((cg) => cg.subject === activeSubjectFilter);
+
+  for (const cg of relevantChapterGroups) {
+    const qs = questions
+      .filter((q) => cg.concepts.includes(q.concept_id))
+      .map((q) => ({ ...q, topicName: CONCEPT_NAMES[q.concept_id] || q.concept_id }))
+      .sort((a, b) => a.difficulty - b.difficulty);
+    if (qs.length > 0) {
+      groups.push({ chapter: cg.key, chapterName: cg.chapter, questions: qs });
+      qs.forEach((q) => assigned.add(q.id));
+    }
+  }
+
+  // Catch any ungrouped questions
+  const ungrouped = questions.filter((q) => !assigned.has(q.id));
+  if (ungrouped.length > 0) {
+    const map = new Map<string, (QuestionSummary & { topicName?: string })[]>();
+    for (const q of ungrouped) {
+      const key = q.concept_id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push({ ...q, topicName: CONCEPT_NAMES[q.concept_id] || q.concept_id });
+    }
+    for (const [concept, qs] of map) {
+      qs.sort((a, b) => a.difficulty - b.difficulty);
+      groups.push({ chapter: concept, chapterName: CONCEPT_NAMES[concept] || concept, questions: qs });
+    }
+  }
+
+  return groups;
+}
 
 interface ChatMessage {
   role: "tutor" | "learner";
@@ -157,10 +227,10 @@ export function TutorPage() {
       const stored = localStorage.getItem("prism_user");
       if (stored) {
         const user = JSON.parse(stored);
-        return user.email as string;
+        return (user.email as string) || "aanya@prism.demo";
       }
     } catch { /* ignore */ }
-    return "";
+    return "aanya@prism.demo";
   })();
   const learnerName = (() => {
     try {
@@ -185,9 +255,28 @@ export function TutorPage() {
   const [loading, setLoading] = useState(false);
   const [questionsLoading, setQuestionsLoading] = useState(true);
   const [solved, setSolved] = useState(false);
+  const [activeGuidanceOption, setActiveGuidanceOption] = useState<string | null>(null);
+  const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  /* Load questions */
+  /* Per-question Attempted and Solved tracking */
+  const [attemptedQIds, setAttemptedQIds] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem("prism_attempted_qids");
+      return s ? new Set(JSON.parse(s)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const [solvedQIds, setSolvedQIds] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem("prism_solved_qids");
+      return s ? new Set(JSON.parse(s)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const [userConceptsMap, setUserConceptsMap] = useState<Record<string, { evidenceCount: number; indepCount: number; pKnow: number }>>({});
+
+  /* Load questions and user concept progress */
   useEffect(() => {
     fetchQuestions()
       .then((data) => {
@@ -198,13 +287,32 @@ export function TutorPage() {
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+    if (!learnerId) return;
+    fetchProgress(learnerId)
+      .then((data) => {
+        const map: Record<string, { evidenceCount: number; indepCount: number; pKnow: number }> = {};
+        data.concepts.forEach((c) => {
+          map[c.concept_id] = {
+            evidenceCount: c.evidence_count,
+            indepCount: c.independent_correct_count,
+            pKnow: c.p_know,
+          };
+        });
+        setUserConceptsMap(map);
+      })
+      .catch(() => {});
+  }, [learnerId]);
+
+  useEffect(() => {
+    if (selectedQ) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatHistory, selectedQ]);
 
   /* Filter questions by subject */
   const filteredQuestions = subjectFilter === "all"
     ? questions
-    : questions.filter((q) => getSubjectForConcept(q.concept_id) === subjectFilter);
+    : questions.filter((q) => getSubjectForConcept(q) === subjectFilter);
 
   const handleSelectQuestion = useCallback(
     (q: QuestionSummary) => {
@@ -281,32 +389,48 @@ export function TutorPage() {
           learner_answer: submissionAnswer || undefined,
         });
 
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: "tutor",
-            content: resp.message,
-            mode: resp.response_mode,
-            isFallback: resp.is_fallback,
-            confidence: resp.confidence,
-          },
-        ]);
-
         if (resp.is_correct) {
           setSolved(true);
+          const finalMsg = resp.message || "🎉 Correct! You've mastered this question. Great job!";
           setChatHistory((prev) => [
             ...prev,
             {
               role: "tutor",
-              content: "🎉 Correct! You've mastered this question. Great job!",
-              mode: "check_thinking",
+              content: finalMsg.toLowerCase().includes("correct") ? finalMsg : `🎉 Correct! ${finalMsg}`,
+              mode: resp.response_mode || "check_thinking",
             },
           ]);
         } else {
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              role: "tutor",
+              content: resp.message,
+              mode: resp.response_mode,
+            },
+          ]);
           if (!isHint) {
             setAttempt((a) => Math.min(a + 1, 3));
           } else {
             setAttempt(Math.min(hintAttempt! + 1, 3));
+          }
+        }
+
+        // Update per-question Attempted / Solved tracking
+        if (selectedQ) {
+          setAttemptedQIds((prev) => {
+            const next = new Set(prev);
+            next.add(selectedQ.id);
+            try { localStorage.setItem("prism_attempted_qids", JSON.stringify(Array.from(next))); } catch {}
+            return next;
+          });
+          if (resp.is_correct) {
+            setSolvedQIds((prev) => {
+              const next = new Set(prev);
+              next.add(selectedQ.id);
+              try { localStorage.setItem("prism_solved_qids", JSON.stringify(Array.from(next))); } catch {}
+              return next;
+            });
           }
         }
         setAnswer("");
@@ -342,30 +466,32 @@ export function TutorPage() {
         )}
       </div>
 
-      {/* Subject filter pills */}
-      <div style={{ display: "flex", gap: ".4rem", marginBottom: "1.2rem", flexWrap: "wrap" }}>
-        {SUBJECT_FILTERS.map((sf) => (
-          <button
-            key={sf.key}
-            onClick={() => setSubjectFilter(sf.key)}
-            className="mg-pill"
-            style={{
-              cursor: "pointer",
-              background: subjectFilter === sf.key ? "#553285" : "#fff",
-              color: subjectFilter === sf.key ? "#fff" : "#553285",
-              border: `1px solid ${subjectFilter === sf.key ? "#553285" : "#dfe6e9"}`,
-              padding: ".3rem .7rem",
-              fontSize: ".78rem",
-              fontWeight: 600,
-              fontFamily: '"Inter", sans-serif',
-              borderRadius: "1rem",
-              transition: "all .15s ease",
-            }}
-          >
-            {sf.label}
-          </button>
-        ))}
-      </div>
+      {/* Subject filter pills — only when viewing question list */}
+      {!selectedQ && (
+        <div style={{ display: "flex", gap: ".4rem", marginBottom: "1.2rem", flexWrap: "wrap" }}>
+          {SUBJECT_FILTERS.map((sf) => (
+            <button
+              key={sf.key}
+              onClick={() => setSubjectFilter(sf.key)}
+              className="mg-pill"
+              style={{
+                cursor: "pointer",
+                background: subjectFilter === sf.key ? "#553285" : "#fff",
+                color: subjectFilter === sf.key ? "#fff" : "#553285",
+                border: `1px solid ${subjectFilter === sf.key ? "#553285" : "#dfe6e9"}`,
+                padding: ".3rem .7rem",
+                fontSize: ".78rem",
+                fontWeight: 600,
+                fontFamily: '"Inter", sans-serif',
+                borderRadius: "1rem",
+                transition: "all .15s ease",
+              }}
+            >
+              {sf.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* AI Tutor featured card */}
       {!selectedQ && (
@@ -394,8 +520,11 @@ export function TutorPage() {
               {QUICK_OPTIONS.map((opt) => (
                 <button
                   key={opt.type}
-                  className="mg-quick-option"
-                  onClick={() => handleGuidance(opt.type, opt.text)}
+                  className={`mg-quick-option ${activeGuidanceOption === opt.type ? "active" : ""}`}
+                  onClick={() => {
+                    setActiveGuidanceOption(opt.type);
+                    void handleGuidance(opt.type, opt.text);
+                  }}
                   disabled={loading}
                 >
                   {opt.text}
@@ -438,31 +567,158 @@ export function TutorPage() {
             <p style={{ color: "#636e72" }}>No questions available for this subject yet.</p>
           ) : (
             <div className="mg-lesson-list">
-              {filteredQuestions.map((q, idx) => (
-                <div
-                  key={q.id}
-                  className="mg-lesson-item"
-                  onClick={() => handleSelectQuestion(q)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleSelectQuestion(q);
-                    }
-                  }}
-                >
-                  <div className="mg-lesson-check">✓</div>
-                  <div>
-                    <div className="mg-lesson-badge">
-                      {CONCEPT_NAMES[q.concept_id] || q.concept_id} · difficulty{" "}
-                      {(q.difficulty * 100).toFixed(0)}%
-                    </div>
-                    <div className="mg-lesson-title">{q.prompt}</div>
+              {groupByChapter(filteredQuestions, subjectFilter).map((group) => {
+                const isCollapsed = collapsedChapters.has(group.chapter);
+                return (
+                  <div key={group.chapter} style={{ marginBottom: "1rem" }}>
+                    {/* Chapter header — collapsible */}
+                    <button
+                      onClick={() => {
+                        setCollapsedChapters((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(group.chapter)) next.delete(group.chapter);
+                          else next.add(group.chapter);
+                          return next;
+                        });
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: ".5rem",
+                        width: "100%",
+                        padding: ".6rem .8rem",
+                        background: "rgba(85, 50, 133, 0.05)",
+                        border: "1px solid rgba(85, 50, 133, 0.12)",
+                        borderRadius: ".6rem",
+                        cursor: "pointer",
+                        fontFamily: '"Inter", sans-serif',
+                        fontSize: ".85rem",
+                        fontWeight: 700,
+                        color: "#553285",
+                        textAlign: "left",
+                        transition: "background .15s ease",
+                      }}
+                    >
+                      <span style={{ fontSize: ".7rem", transition: "transform .2s ease", transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▼</span>
+                      <span>{group.chapterName}</span>
+                      <span style={{
+                        marginLeft: "auto",
+                        fontSize: ".7rem",
+                        fontWeight: 500,
+                        color: "#636e72",
+                        background: "rgba(0,0,0,.04)",
+                        padding: ".15rem .5rem",
+                        borderRadius: ".8rem",
+                      }}>
+                        {group.questions.length} question{group.questions.length !== 1 ? "s" : ""}
+                      </span>
+                    </button>
+
+                    {/* Questions within chapter */}
+                    {!isCollapsed && group.questions.map((q, idx) => {
+                      const diff = getDifficultyLabel(q.difficulty);
+                      const qType = getQuestionTypeLabel(q.question_type || q.answer_type);
+                      return (
+                        <div
+                          key={q.id}
+                          className="mg-lesson-item"
+                          onClick={() => handleSelectQuestion(q)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectQuestion(q);
+                            }
+                          }}
+                        >
+                          <div className="mg-lesson-check">✓</div>
+                          <div style={{ flex: 1 }}>
+                            <div className="mg-lesson-badge" style={{ display: "flex", alignItems: "center", gap: ".4rem", flexWrap: "wrap" }}>
+                              {/* Difficulty pill */}
+                              <span style={{
+                                display: "inline-block",
+                                padding: ".12rem .45rem",
+                                borderRadius: ".8rem",
+                                fontSize: ".65rem",
+                                fontWeight: 700,
+                                color: diff.color,
+                                background: diff.bg,
+                                border: `1px solid ${diff.color}20`,
+                              }}>
+                                {diff.label}
+                              </span>
+                              {/* Question type pill */}
+                              <span style={{
+                                display: "inline-block",
+                                padding: ".12rem .45rem",
+                                borderRadius: ".8rem",
+                                fontSize: ".65rem",
+                                fontWeight: 600,
+                                color: "#636e72",
+                                background: "rgba(0,0,0,.04)",
+                              }}>
+                                {qType.icon} {qType.label}
+                              </span>
+                            </div>
+                            <div className="mg-lesson-title">{q.prompt}</div>
+                            {(q as QuestionSummary & { topicName?: string }).topicName && (
+                              <span style={{
+                                display: "inline-block",
+                                marginTop: ".25rem",
+                                padding: ".1rem .4rem",
+                                borderRadius: ".6rem",
+                                fontSize: ".62rem",
+                                fontWeight: 600,
+                                color: "#553285",
+                                background: "rgba(85,50,133,.06)",
+                                border: "1px solid rgba(85,50,133,.1)",
+                              }}>
+                                {(q as QuestionSummary & { topicName?: string }).topicName}
+                              </span>
+                            )}
+                            {q.ncert_reference && (
+                              <span style={{
+                                display: "inline-block",
+                                marginTop: ".25rem",
+                                marginLeft: ".3rem",
+                                padding: ".1rem .4rem",
+                                borderRadius: ".6rem",
+                                fontSize: ".62rem",
+                                fontWeight: 600,
+                                color: "#1bb576",
+                                background: "rgba(27,181,118,.06)",
+                                border: "1px solid rgba(27,181,118,.15)",
+                              }}>
+                                📚 {q.ncert_reference.book.split(" — ")[0]} · {q.ncert_reference.chapter.split(":")[0]}
+                              </span>
+                            )}
+                          </div>
+                          {(() => {
+                            const isSolved = solvedQIds.has(q.id);
+                            const isAttempted = attemptedQIds.has(q.id);
+                            if (isSolved) {
+                              return (
+                                <span className="mg-pill mg-pill--green" style={{ fontSize: ".72rem", padding: ".2rem .55rem" }}>
+                                  ✓ Solved
+                                </span>
+                              );
+                            }
+                            if (isAttempted) {
+                              return (
+                                <span className="mg-pill mg-pill--orange" style={{ fontSize: ".72rem", padding: ".2rem .55rem" }}>
+                                  📝 Attempted
+                                </span>
+                              );
+                            }
+                            return <span className="mg-lesson-meta">Q{idx + 1}</span>;
+                          })()}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="mg-lesson-meta">Q{idx + 1}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -503,31 +759,24 @@ export function TutorPage() {
 
             {/* Hint buttons with tooltips */}
             {!solved && (
-              <div className="mg-hint-row">
-                {HINT_BUTTONS.map((hint, idx) => (
-                  <div key={idx} style={{ position: "relative", display: "inline-block" }}>
-                    <button
-                      className="mg-hint-btn"
-                      onClick={() => handleAction(undefined, idx)}
-                      disabled={loading}
-                      style={{
-                        borderColor: hint.border,
-                        color: hint.color,
-                        background: attempt === idx ? hint.bg : "#fff",
-                      }}
-                      title={hint.tooltip}
-                    >
-                      {hint.label}
-                      <span style={{
-                        marginLeft: ".3rem",
-                        fontSize: ".6rem",
-                        opacity: 0.6,
-                        cursor: "help",
-                      }}>
-                        ℹ️
-                      </span>
-                    </button>
-                  </div>
+              <div className="mg-hint-row" style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".5rem" }}>
+                {HINT_BUTTONS.map((hint) => (
+                  <button
+                    key={hint.key}
+                    className="mg-hint-btn"
+                    onClick={() => handleAction(undefined, hint.attemptIndex)}
+                    disabled={loading}
+                    style={{
+                      borderColor: hint.border,
+                      color: hint.color,
+                      background: hint.bg,
+                      flex: "1 1 auto",
+                      minWidth: "8rem",
+                    }}
+                    title={hint.tooltip}
+                  >
+                    {hint.label}
+                  </button>
                 ))}
               </div>
             )}
@@ -613,15 +862,6 @@ export function TutorPage() {
                         }}>
                           {modeInfo.icon} {modeInfo.userLabel}
                         </span>
-                        {msg.isFallback && (
-                          <span style={{
-                            fontSize: ".6rem", color: "#b2bec3",
-                            background: "rgba(0,0,0,0.04)",
-                            padding: ".1rem .3rem", borderRadius: ".2rem",
-                          }}>
-                            fallback
-                          </span>
-                        )}
                       </div>
                     )}
                     <div className={`mg-chat-bubble ${msg.role === "tutor" ? "mg-chat-bubble--tutor" : "mg-chat-bubble--learner"}`}>

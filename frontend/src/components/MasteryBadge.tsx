@@ -48,7 +48,7 @@ export function MasteryBadge({ pKnow, band, message, size = "md" }: MasteryBadge
   return (
     <span
       className="mastery-badge"
-      title={`P(know) = ${(pKnow * 100).toFixed(0)}%`}
+      title={`Understanding: ${pKnow >= 0.70 ? "Strong" : pKnow >= 0.40 ? "Developing" : "Needs review"}`}
       style={{
         display: "inline-flex",
         alignItems: "center",

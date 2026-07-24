@@ -21,3 +21,11 @@ start.bat
 stop.bat
 .agents/
 reference_screenshots/
+
+# Backend build artifacts
+backend/.pytest_cache/
+backend/pytest_out.txt
+backend/prism_api.egg-info/
+
+# Flowwatch sidecar
+flowwatch-sidecar/node_modules/
