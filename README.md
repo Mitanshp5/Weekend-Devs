@@ -1,19 +1,66 @@
 # PRISM — Personalized Remediation and Intelligent Scaffolding for Mastery
-### TetraTHON 2026 · EdTech Track · Adaptive Microlearning + AI Doubt-Resolution Tutor
 
-PRISM is an adaptive, offline-resilient STEM learning platform for Grade 8 classrooms. It turns every learner interaction into explainable evidence, identifies prerequisite gaps behind errors or doubts using **Bayesian Knowledge Tracing (BKT)**, delivers curriculum-grounded micro-lessons, and gives teachers real-time intervention insights.
+**From “I am stuck” to a clear next step.**  
+Adaptive microlearning + evidence-grounded doubt resolution for mixed-ability Grade 8 classrooms.
+
+**TetraTHON 2026 · EdTech Track**
 
 ---
 
-## 🌟 The 3-Minute Judge Flow
+## 🌟 The Problem
 
-0. **Cinematic Project Overview (`/`)**: Interactive scroll-driven presentation covering PRISM's problem statement, 4-stage pedagogical loop (*Observe → Map → Guide → Verify*), dual learner & evaluator experiences, low-bandwidth architecture, and trust model.
-1. **Diagnostic Probe (`/diagnostic`)**: 5-question sequential probe across prerequisite concepts → evidence-based BKT level placement (Foundational / Grade-Level / Advanced).
-2. **Adaptive Micro-Lesson (`/lesson/:conceptId`)**: Targeted concept practice stage with real-time BKT probability updates, hint ladders, and post-attempt evidence tracking.
-3. **Evidence & Recommendation Panel**: Slide-in panel showing PRISM's explainable recommendation with transparent reason trace, evidence ledger, and learner controls (*Review, Easier, Harder, Retry*).
-4. **Socratic AI Tutor (`/tutor`)**: Structured 4-mode tutor escalation ladder (*Think About It → What Went Wrong → Show Me a Step → Full Solution*) with deterministic authored fallback and curriculum grounding.
-5. **Progress & Evidence History (`/progress`)**: Subject results summary, analytics, concept progress bars, and full attempt timeline drill-downs.
-6. **Teacher Intervention Board (`/teacher`)**: Cohort command center, student intervention cards, and class-wide misconception cluster analysis.
+In one Grade 8 classroom, learners enter the same lesson with different prerequisite gaps. A single digital path is either too slow, too hard, or too shallow. STEM doubts compound when a learner receives an answer without repairing the underlying concept, and teachers cannot inspect every learner’s misconception pattern in real time. 
+
+Always-online products fail at the point of need when bandwidth is weak or intermittent.
+
+**PRISM turns a learner’s answer, error pattern, and doubt into one evidence-backed next step—for the learner and for the teacher.**
+
+---
+
+## 🔄 Observe → Map → Guide → Verify
+
+PRISM is built on a deliberately closed 4-stage pedagogical loop. It doesn't diagnose once and permanently label a learner.
+
+1. **OBSERVE (5-Question Probe)**: A short, revisable placement signal tied to prerequisite concepts, response evidence, and a confidence state. Places the learner in a Foundational, Grade-Level, or Advanced starting path.
+2. **MAP (Concept + Error Evidence Model)**: Every response maps to a concept graph with uncertainty. It identifies the root-gap concept beneath a question or doubt.
+3. **GUIDE (Micro-lesson / Tutor Scaffold)**: A 10-minute targeted repair loop (worked example → self-explanation → targeted practice → immediate feedback).
+4. **VERIFY (Transfer Check + Mastery Update)**: A final check validates independent application, updates the concept graph, and surfaces a clear signal to the teacher.
+
+---
+
+## 🧑‍🏫 The Socratic AI Tutor
+
+The tutor escalates help only when the learner needs it, following an attempt-aware pedagogical ladder:
+
+- **1st attempt**: Socratic hint (*“What must happen to both sides before x is alone?”*)
+- **1st incorrect**: Explain error (*“You removed 5 correctly, but x is still multiplied by 3.”*)
+- **2nd incorrect**: Worked step (*“From 3x = 21, divide both sides by 3: x = 7.”*)
+- **3rd incorrect / “show me”**: Direct explanation (Full curriculum-linked worked solution)
+- **After explanation**: Check thinking (Isomorphic transfer question)
+
+*Note: The LLM is optional phrasing assistance. The teaching policy and concept model remain deterministic, allowing PRISM to work offline.*
+
+---
+
+## 📊 The Evaluator Dashboard
+
+**Answers: “Who needs what, based on what evidence, now?”**
+
+PRISM does not create a second system for teachers. Learner interactions automatically produce the teacher’s intervention signal. The cohort command view shows active/offline sessions and top misconception clusters ranked by repeat rate, recency, and downstream risk. 
+
+Instead of a wall of charts, teachers receive a **2-minute intervention recommendation** (e.g., *"Ask the learner to solve 3x = 21 on a mini-whiteboard"*).
+
+---
+
+## 🏗️ Architecture & Trust (Offline-First)
+
+Useful before the network is perfect.
+
+- **PWA + Cached Content**: Text-first micro-lessons for quick first paint; useful during poor connectivity.
+- **Local Outbox**: Learner work is saved to an IndexedDB outbox when the network fails.
+- **Idempotent Events**: A retried sync cannot duplicate an attempt or inflate mastery.
+- **PostgreSQL**: The source of truth for durable, auditable learner and curriculum evidence.
+- **Optional LLM Layer**: Core diagnosis and authored fallback remain available without external inference.
 
 ---
 
@@ -66,36 +113,6 @@ Log in or switch accounts using any of these credentials:
 | **Vikram Joshi** | `vikram@prism.demo` | `Prism_demo_8` | Student |
 
 *Note: Performance statistics and mastery states are dynamically computed from persisted database event logs.*
-
----
-
-## 🏗️ Architecture & Non-Negotiables
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ PRISM React PWA Client (Vite, TypeScript, Motion, CSS)          │
-│ Overview · Diagnostic · Tutor · Progress · Teacher Dashboard    │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ REST API
-┌───────────────────────────────▼─────────────────────────────────┐
-│ PRISM FastAPI Application Backend (Python)                       │
-│ BKT Engine · Scoring & Rubrics · Tutor Orchestrator · Guidance  │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ PostgreSQL 16
-┌───────────────────────────────▼─────────────────────────────────┐
-│ Relational Database & Read Models                               │
-│ curriculum_* · tutor_* · mastery_history · auth_users           │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Seven Non-Negotiable Guarantees
-1. **Explainable Adaptation**: Every next-step recommendation carries an inspectable reason trace.
-2. **Offline-First Deterministic Core**: The entire learning, scoring, BKT, and tutor loop works without LLMs or internet access.
-3. **Persisted Data Truth**: Zero synthetic or mock UI states — all mastery scores and cluster signals derive from PostgreSQL logs.
-4. **Bayesian Knowledge Tracing**: Principled probabilistic updates ($P(L_0)=0.35, P(T)=0.12, P(S)=0.08, P(G)=0.20$), not arbitrary percentage averages.
-5. **Evidence-Based Root Gap**: Misconceptions and prerequisite blockers are identified via authored rubrics and graph traversal.
-6. **Grounding & Safety**: LLM responses are strictly bounded by curriculum context and validated against structured schemas.
-7. **Role-Protected Analytics**: Teacher views offer actionable intervention signals without reductive student labelling.
 
 ---
 
